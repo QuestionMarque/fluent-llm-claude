@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from ..models.workflow import Workflow
 from ..models.plan import Plan
@@ -79,39 +79,54 @@ class ExecutionLoop:
                     error=f"Failed to obtain TDF: {e}",
                 )
 
-            # Step 2: Decompose into Workflow
-            try:
-                workflow = self.decomposer.decompose(tdf)
-                print(f"[ExecutionLoop] Decomposed {len(workflow.steps)} step(s)")
-            except Exception as e:
-                return ExecutionLoopResult(
-                    success=False,
-                    attempts=attempt,
-                    error=f"Workflow decomposition failed: {e}",
-                )
-
-            # Step 3: Validate
-            feedback = self.validator.validate_workflow(workflow)
-            last_feedback = feedback
-            print(f"[ExecutionLoop] Validation: {self.feedback_builder.summarize(feedback)}")
-
-            if not feedback.is_valid:
-                if self.tdf_mode == "library":
-                    # Fail-fast: library TDFs must always be valid
+            # Step 2: Decompose into Workflow (or use pre-built Workflow directly)
+            tdf_or_workflow = tdf
+            if isinstance(tdf_or_workflow, Workflow):
+                # Trusted developer Workflow — skip decomposition and schema validation.
+                # Semantic checks still run but are advisory-only: errors are logged,
+                # never treated as fail-fast blocking conditions.
+                workflow = tdf_or_workflow
+                print(f"[ExecutionLoop] Using pre-built Workflow: {len(workflow.steps)} step(s)")
+                feedback = self.validator.validate_workflow(workflow)
+                last_feedback = feedback
+                if feedback.errors:
+                    print(
+                        f"[ExecutionLoop] Advisory validation — "
+                        f"{len(feedback.errors)} issue(s) noted (proceeding)"
+                    )
+            else:
+                # Dict TDF — full decompose + schema + semantic validation pipeline.
+                try:
+                    workflow = self.decomposer.decompose(tdf_or_workflow)
+                    print(f"[ExecutionLoop] Decomposed {len(workflow.steps)} step(s)")
+                except Exception as e:
                     return ExecutionLoopResult(
                         success=False,
                         attempts=attempt,
-                        workflow=workflow,
-                        error="Validation failed in library mode (fail-fast). This is a code bug.",
-                        validation_feedback=feedback,
+                        error=f"Workflow decomposition failed: {e}",
                     )
 
-                # LLM mode: build corrective prompt and retry
-                retry_prompt = self.feedback_builder.build_retry_prompt(feedback, retry_prompt)
-                print("[ExecutionLoop] Validation failed — retrying with corrective prompt...")
-                continue
+                feedback = self.validator.validate_workflow(workflow)
+                last_feedback = feedback
+                print(f"[ExecutionLoop] Validation: {self.feedback_builder.summarize(feedback)}")
 
-            # Step 4: Plan → Execute → State update for each step
+                if not feedback.is_valid:
+                    if self.tdf_mode == "library":
+                        # Fail-fast: dict library TDFs must always be valid.
+                        return ExecutionLoopResult(
+                            success=False,
+                            attempts=attempt,
+                            workflow=workflow,
+                            error="Validation failed in library mode (fail-fast). This is a code bug.",
+                            validation_feedback=feedback,
+                        )
+
+                    # LLM mode: build corrective prompt and retry
+                    retry_prompt = self.feedback_builder.build_retry_prompt(feedback, retry_prompt)
+                    print("[ExecutionLoop] Validation failed — retrying with corrective prompt...")
+                    continue
+
+            # Step 3: Plan → Execute → State update for each step
             plans: List[Plan] = []
             execution_log: List[Dict[str, Any]] = []
             state_manager = StateManager()
@@ -171,7 +186,7 @@ class ExecutionLoop:
             validation_feedback=last_feedback,
         )
 
-    def _obtain_tdf(self, prompt: str, tdf_name: str) -> dict:
+    def _obtain_tdf(self, prompt: str, tdf_name: str) -> Union[Dict[str, Any], Workflow]:
         if self.tdf_mode == "library":
             if not tdf_name:
                 raise ValueError("tdf_name must be provided when tdf_mode='library'.")

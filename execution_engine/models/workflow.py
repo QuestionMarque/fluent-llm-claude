@@ -45,11 +45,30 @@ STEP_SCHEMA: Dict[str, Dict[str, List[str]]] = {
             "liquid_class",
             "well_offset", "well_offsets",
             "cycles",
+            "tip_indices",
+        ],
+    },
+    # "mix" is an alias-style step used in some TDFs. Uses volume_uL / target
+    # instead of volumes / labware. Maps to MixVolume method in the registry.
+    "mix": {
+        "required": [],
+        "optional": [
+            "volumes", "volume_uL",
+            "cycles",
+            "labware", "target",
+            "liquid_class",
+            "tip_type", "DiTi_type", "diti_type",
+            "well_offsets", "well_offset",
+            "tip_indices",
         ],
     },
     "incubate": {
         "required": ["duration_seconds"],
-        "optional": ["temperature_celsius", "device"],
+        "optional": [
+            "temperature_celsius", "device",
+            # Extended aliases used in some TDFs
+            "time_s", "location", "labware",
+        ],
     },
     "transfer_labware": {
         "required": ["labware_name", "target_location"],
@@ -57,15 +76,22 @@ STEP_SCHEMA: Dict[str, Dict[str, List[str]]] = {
     },
     "get_tips": {
         "required": ["tip_type"],
-        "optional": ["DiTi_type", "diti_type"],
+        "optional": [
+            "DiTi_type", "diti_type",
+            "tip_indices", "airgap_volume", "airgap_speed",
+        ],
     },
     "drop_tips_to_location": {
         "required": ["labware"],
-        "optional": [],
+        "optional": ["tip_indices"],
     },
     "empty_tips": {
         "required": [],
-        "optional": ["labware_empty_tips"],
+        "optional": [
+            "labware_empty_tips", "labware",
+            "liquid_class", "well_offsets", "well_offset",
+            "tip_indices",
+        ],
     },
 }
 

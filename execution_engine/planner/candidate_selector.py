@@ -39,8 +39,10 @@ class CandidateSelector:
         liquid_name = params.get("liquid_class")
         volumes = params.get("volumes") or params.get("volume_uL")
 
-        # Tip hard filter: if specified, must exist in method's tip list
-        if tip_name and method.tip_types:
+        # Tip hard filter: only apply when the tip is a known registry type.
+        # Unknown tip names (e.g. device-specific aliases in Workflow TDFs)
+        # are not rejected — they cannot be validated against the registry.
+        if tip_name and method.tip_types and tip_name in self.registry.tips:
             if tip_name not in method.tip_types:
                 return False
 
@@ -50,9 +52,13 @@ class CandidateSelector:
             if max_vol < method.min_volume_uL or max_vol > method.max_volume_uL:
                 return False
 
-        # Liquid/tip compatibility hard filter
+        # Liquid/tip compatibility hard filter: only apply when both values
+        # are recognized by the registry. Custom names pass through.
         if tip_name and liquid_name:
-            if not self.registry.tip_compatible_with_liquid(tip_name, liquid_name):
-                return False
+            tip_known = tip_name in self.registry.tips
+            liquid_known = liquid_name in self.registry.liquid_classes
+            if tip_known and liquid_known:
+                if not self.registry.tip_compatible_with_liquid(tip_name, liquid_name):
+                    return False
 
         return True

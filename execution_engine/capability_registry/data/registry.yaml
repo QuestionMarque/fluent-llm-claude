@@ -207,11 +207,11 @@ methods:
 
   MixVolume:
     description: Mix contents of labware wells by aspirate/dispense cycling
-    supports: [mix_volume]
+    supports: [mix_volume, mix]
     tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL]
     liquid_classes: [Water, Buffer, Serum]
     min_volume_uL: 2
-    max_volume_uL: 200
+    max_volume_uL: 1000
     variables:
       - volumes
       - labware
