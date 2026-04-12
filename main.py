@@ -1,7 +1,7 @@
 """main.py — End-to-end demonstration of the fluent-llm execution engine.
 
 Runs in library mode by default (no LLM or network access required).
-To use LLM mode: set OPENAI_API_KEY in a .env file and switch tdf_mode="llm".
+To use LLM mode: set OPENAI_API_KEY in a .env file and switch ir_mode="llm".
 """
 import os
 from dotenv import load_dotenv
@@ -74,15 +74,15 @@ def main():
         runtime_adapter=adapter,
         validator=validator,
         decomposer=decomposer,
-        tdf_mode="library",
+        ir_mode="library",
         max_retries=1,
         # llm_client=LLMClient(provider="openai", model="gpt-4o-mini")  # enable for LLM mode
     )
 
-    # 4. Run a predefined TDF from the library
-    tdf_name = "distribution_mix_incubate"
-    print(f"\n[Run] Executing TDF: '{tdf_name}'")
-    result = loop.run(tdf_name=tdf_name)
+    # 4. Run a predefined IR from the library
+    ir_name = "dilute_samples_from_full_plate"
+    print(f"\n[Run] Executing IR: '{ir_name}'")
+    result = loop.run(ir_name=ir_name)
 
     # 5. Display results
     print("\n" + "=" * 62)

@@ -40,7 +40,7 @@ class CandidateSelector:
         volumes = params.get("volumes") or params.get("volume_uL")
 
         # Tip hard filter: only apply when the tip is a known registry type.
-        # Unknown tip names (e.g. device-specific aliases in Workflow TDFs)
+        # Unknown tip names (e.g. device-specific aliases in Workflow IRs)
         # are not rejected — they cannot be validated against the registry.
         if tip_name and method.tip_types and tip_name in self.registry.tips:
             if tip_name not in method.tip_types:

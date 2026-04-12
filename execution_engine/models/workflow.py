@@ -48,7 +48,7 @@ STEP_SCHEMA: Dict[str, Dict[str, List[str]]] = {
             "tip_indices",
         ],
     },
-    # "mix" is an alias-style step used in some TDFs. Uses volume_uL / target
+    # "mix" is an alias-style step used in some IRs. Uses volume_uL / target
     # instead of volumes / labware. Maps to MixVolume method in the registry.
     "mix": {
         "required": [],
@@ -66,7 +66,7 @@ STEP_SCHEMA: Dict[str, Dict[str, List[str]]] = {
         "required": ["duration_seconds"],
         "optional": [
             "temperature_celsius", "device",
-            # Extended aliases used in some TDFs
+            # Extended aliases used in some IRs
             "time_s", "location", "labware",
         ],
     },

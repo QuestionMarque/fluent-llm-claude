@@ -1,20 +1,22 @@
-"""TDF library — pre-defined workflows for deterministic library-mode execution.
+"""IR library — pre-defined workflows for deterministic library-mode execution.
 
-Two storage formats are supported:
+IR (Intermediate Representation) is the internal format that describes a
+workflow as an ordered list of typed steps with parameters. Two storage
+formats are supported:
 
-Dict TDFs (legacy / schema-validated path):
+Dict IRs (legacy / schema-validated path):
   Stored in _DICT_LIBRARY.  The execution loop decomposes these with
   WorkflowDecomposer and runs them through full schema + semantic validation.
   Validation failures are fatal in library mode (fail-fast).
 
-Workflow TDFs (trusted developer path):
+Workflow IRs (trusted developer path):
   Stored in _WORKFLOW_LIBRARY as pre-built Workflow objects.
   The execution loop skips decomposition and schema validation for these —
   they are trusted developer-authored objects.  Semantic (registry) checks
   still run advisory-only.  This format supports extended field names and
   step types that aren't in the strict dict-format STEP_SCHEMA.
 
-get_tdf(name) returns either a dict or a Workflow.
+get_ir(name) returns either a dict or a Workflow.
 The execution loop checks isinstance(result, Workflow) to choose the path.
 """
 from typing import Any, Dict, Union
@@ -23,7 +25,7 @@ from ..models.workflow import Workflow, Step
 
 
 # ---------------------------------------------------------------------------
-# Dict-format TDFs (legacy, fully schema-validated)
+# Dict-format IRs (legacy, fully schema-validated)
 # ---------------------------------------------------------------------------
 _DICT_LIBRARY: Dict[str, Dict[str, Any]] = {
     "simple_distribution_dict": {
@@ -135,7 +137,7 @@ _DICT_LIBRARY: Dict[str, Dict[str, Any]] = {
 
 
 # ---------------------------------------------------------------------------
-# Workflow-format TDFs (trusted developer objects — extended field support)
+# Workflow-format IRs (trusted developer objects — extended field support)
 # ---------------------------------------------------------------------------
 
 def _simple_distribution() -> Workflow:
@@ -767,13 +769,13 @@ _LIBRARY: Dict[str, Union[Dict[str, Any], Workflow]] = {
 }
 
 
-def list_tdf_names() -> list:
-    """List all available TDF names (both dict and Workflow formats)."""
+def list_ir_names() -> list:
+    """List all available IR names (both dict and Workflow formats)."""
     return list(_LIBRARY.keys())
 
 
-def get_tdf(name: str) -> Union[Dict[str, Any], Workflow]:
-    """Retrieve a TDF by name.
+def get_ir(name: str) -> Union[Dict[str, Any], Workflow]:
+    """Retrieve an IR by name.
 
     Returns either a dict (schema-validated path) or a Workflow object
     (trusted developer path).  The execution loop checks isinstance(result, Workflow)
@@ -784,6 +786,6 @@ def get_tdf(name: str) -> Union[Dict[str, Any], Workflow]:
     if name not in _LIBRARY:
         available = ", ".join(sorted(_LIBRARY.keys()))
         raise KeyError(
-            f"TDF '{name}' not found in library. Available: {available}"
+            f"IR '{name}' not found in library. Available: {available}"
         )
     return _LIBRARY[name]

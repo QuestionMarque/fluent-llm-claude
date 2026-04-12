@@ -1,15 +1,15 @@
 # llm/
 
-Optional LLM integration for IFU → TDF generation.
+Optional LLM integration for IFU → IR generation.
 **The system runs fully in library mode without this package.**
-Only instantiate `LLMClient` when `tdf_mode="llm"`.
+Only instantiate `LLMClient` when `ir_mode="llm"`.
 
 ---
 
 ## Modules
 
 ### `llm_client.py`
-`LLMClient` — calls an LLM provider to generate a TDF from a prompt.
+`LLMClient` — calls an LLM provider to generate an IR from a prompt.
 
 - Supports: OpenAI (`provider="openai"`)
 - Enforces structured JSON output via `response_format={"type": "json_object"}`
@@ -20,15 +20,15 @@ Only instantiate `LLMClient` when `tdf_mode="llm"`.
 Add a branch in `_call_provider()` and a corresponding `_init_<provider>()`.
 
 ### `prompt_builder.py`
-`PromptBuilder` — constructs complete prompts for IFU → TDF generation.
+`PromptBuilder` — constructs complete prompts for IFU → IR generation.
 
 Injects capability context from the registry so the LLM:
 - Knows which step types exist (with required/optional fields)
 - Knows which tip types, liquid classes, and labware are available
-- Produces schema-valid, registry-grounded TDF output
+- Produces schema-valid, registry-grounded IR output
 
 ### `schema.py`
-`TDF_SCHEMA` — lightweight JSON schema for LLM output structure validation.
+`IR_SCHEMA` — lightweight JSON schema for LLM output structure validation.
 Confirms the response has a `steps` list before handing it to the decomposer.
 Deep validation (required fields, step types) happens in `ValidatorWrapper`.
 
@@ -41,8 +41,8 @@ IFU text
   ↓
 PromptBuilder.build(ifu_text, context)
   ↓ (prompt string)
-LLMClient.generate_tdf(prompt)
-  ↓ (TDF dict or StructuredJSONError)
+LLMClient.generate_ir(prompt)
+  ↓ (IR dict or StructuredJSONError)
 ExecutionLoop validates → retries with corrective prompt if invalid
 ```
 
@@ -64,6 +64,6 @@ client = LLMClient(provider="openai", model="gpt-4o-mini")
 
 ifu = "Distribute 100 µL of PBS buffer into all wells of a 96-well plate."
 prompt = builder.build(ifu)
-tdf = client.generate_tdf(prompt)
-print(tdf)  # {"steps": [...]}
+ir = client.generate_ir(prompt)
+print(ir)  # {"steps": [...]}
 ```

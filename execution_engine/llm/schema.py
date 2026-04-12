@@ -1,10 +1,10 @@
-"""JSON schema for validating LLM-generated TDF output.
+"""JSON schema for validating LLM-generated IR output.
 
-Used to catch structural issues before passing TDF to the decomposer.
+Used to catch structural issues before passing IR to the decomposer.
 Deep validation (required fields, step types) happens in ValidatorWrapper.
 """
 
-TDF_SCHEMA = {
+IR_SCHEMA = {
     "type": "object",
     "required": ["steps"],
     "properties": {

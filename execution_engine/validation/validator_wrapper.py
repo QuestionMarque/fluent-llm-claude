@@ -4,7 +4,7 @@ from ..models.workflow import Step, Workflow, STEP_SCHEMA
 from ..models.feedback import FeedbackItem, ValidationFeedback
 from ..capability_registry.registry import CapabilityRegistry
 
-# All field name aliases for tip type across TDF dialects
+# All field name aliases for tip type across IR dialects
 TIP_TYPE_ALIASES = ["tip_type", "DiTi_type", "diti_type"]
 
 # All field names that identify a labware item in step params

@@ -11,7 +11,7 @@ from ..validation.validator_wrapper import ValidatorWrapper
 from ..validation.feedback_builder import FeedbackBuilder
 from ..planner.planner import Planner
 from ..runtime.pyfluent_adapter import PyFluentAdapter
-from . import tdf_library
+from . import ir_library
 
 
 @dataclass
@@ -32,11 +32,11 @@ class ExecutionLoop:
     """Control tower — coordinates end-to-end workflow execution.
 
     Modes:
-    - tdf_mode="library": load TDF from tdf_library (fail-fast on validation errors)
-    - tdf_mode="llm":     generate TDF via LLM, retry with corrective prompt on failure
+    - ir_mode="library": load IR from ir_library (fail-fast on validation errors)
+    - ir_mode="llm":     generate IR via LLM, retry with corrective prompt on failure
 
     The difference in error handling between modes is intentional:
-    - Library mode: the TDF is authored and should always be valid. Any failure
+    - Library mode: the IR is authored and should always be valid. Any failure
       is a code bug, not a runtime condition — fail immediately without retrying.
     - LLM mode: the model output may be imperfect. Build a retry prompt from
       the validation feedback and loop until valid or max_retries is hit.
@@ -49,7 +49,7 @@ class ExecutionLoop:
         validator: ValidatorWrapper,
         decomposer: Optional[WorkflowDecomposer] = None,
         llm_client=None,
-        tdf_mode: str = "library",
+        ir_mode: str = "library",
         max_retries: int = 3,
     ):
         self.planner = planner
@@ -57,35 +57,35 @@ class ExecutionLoop:
         self.validator = validator
         self.decomposer = decomposer or WorkflowDecomposer()
         self.llm_client = llm_client
-        self.tdf_mode = tdf_mode
+        self.ir_mode = ir_mode
         self.max_retries = max_retries
         self.feedback_builder = FeedbackBuilder()
 
-    def run(self, prompt: str = "", tdf_name: str = "") -> ExecutionLoopResult:
-        """Execute a full workflow from a TDF library name or LLM prompt."""
+    def run(self, prompt: str = "", ir_name: str = "") -> ExecutionLoopResult:
+        """Execute a full workflow from an IR library name or LLM prompt."""
         retry_prompt = prompt
         last_feedback: Optional[ValidationFeedback] = None
 
         for attempt in range(1, self.max_retries + 2):
             print(f"\n[ExecutionLoop] Attempt {attempt}")
 
-            # Step 1: Obtain TDF
+            # Step 1: Obtain IR
             try:
-                tdf = self._obtain_tdf(retry_prompt, tdf_name)
+                ir = self._obtain_ir(retry_prompt, ir_name)
             except Exception as e:
                 return ExecutionLoopResult(
                     success=False,
                     attempts=attempt,
-                    error=f"Failed to obtain TDF: {e}",
+                    error=f"Failed to obtain IR: {e}",
                 )
 
             # Step 2: Decompose into Workflow (or use pre-built Workflow directly)
-            tdf_or_workflow = tdf
-            if isinstance(tdf_or_workflow, Workflow):
+            ir_or_workflow = ir
+            if isinstance(ir_or_workflow, Workflow):
                 # Trusted developer Workflow — skip decomposition and schema validation.
-                # Semantic checks still run but are advisory-only: errors are logged,
+                # Semantic checks still run advisory-only: errors are logged,
                 # never treated as fail-fast blocking conditions.
-                workflow = tdf_or_workflow
+                workflow = ir_or_workflow
                 print(f"[ExecutionLoop] Using pre-built Workflow: {len(workflow.steps)} step(s)")
                 feedback = self.validator.validate_workflow(workflow)
                 last_feedback = feedback
@@ -95,9 +95,9 @@ class ExecutionLoop:
                         f"{len(feedback.errors)} issue(s) noted (proceeding)"
                     )
             else:
-                # Dict TDF — full decompose + schema + semantic validation pipeline.
+                # Dict IR — full decompose + schema + semantic validation pipeline.
                 try:
-                    workflow = self.decomposer.decompose(tdf_or_workflow)
+                    workflow = self.decomposer.decompose(ir_or_workflow)
                     print(f"[ExecutionLoop] Decomposed {len(workflow.steps)} step(s)")
                 except Exception as e:
                     return ExecutionLoopResult(
@@ -111,8 +111,8 @@ class ExecutionLoop:
                 print(f"[ExecutionLoop] Validation: {self.feedback_builder.summarize(feedback)}")
 
                 if not feedback.is_valid:
-                    if self.tdf_mode == "library":
-                        # Fail-fast: dict library TDFs must always be valid.
+                    if self.ir_mode == "library":
+                        # Fail-fast: dict library IRs must always be valid.
                         return ExecutionLoopResult(
                             success=False,
                             attempts=attempt,
@@ -186,15 +186,15 @@ class ExecutionLoop:
             validation_feedback=last_feedback,
         )
 
-    def _obtain_tdf(self, prompt: str, tdf_name: str) -> Union[Dict[str, Any], Workflow]:
-        if self.tdf_mode == "library":
-            if not tdf_name:
-                raise ValueError("tdf_name must be provided when tdf_mode='library'.")
-            return tdf_library.get_tdf(tdf_name)
+    def _obtain_ir(self, prompt: str, ir_name: str) -> Union[Dict[str, Any], Workflow]:
+        if self.ir_mode == "library":
+            if not ir_name:
+                raise ValueError("ir_name must be provided when ir_mode='library'.")
+            return ir_library.get_ir(ir_name)
 
-        if self.tdf_mode == "llm":
+        if self.ir_mode == "llm":
             if self.llm_client is None:
-                raise RuntimeError("llm_client is required when tdf_mode='llm'.")
-            return self.llm_client.generate_tdf(prompt)
+                raise RuntimeError("llm_client is required when ir_mode='llm'.")
+            return self.llm_client.generate_ir(prompt)
 
-        raise ValueError(f"Unknown tdf_mode: '{self.tdf_mode}'")
+        raise ValueError(f"Unknown ir_mode: '{self.ir_mode}'")

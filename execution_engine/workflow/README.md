@@ -1,15 +1,15 @@
 # workflow/
 
-Translates TDF dicts into typed `Workflow` objects and tracks execution state.
+Translates dict IRs into typed `Workflow` objects and tracks execution state.
 
 ---
 
 ## Modules
 
 ### `decomposer.py`
-`WorkflowDecomposer` — converts a raw TDF dict into a `Workflow`.
+`WorkflowDecomposer` — converts a dict IR into a `Workflow`.
 
-Each TDF step becomes a `Step(type, params, id)`. Step types that have
+Each IR step becomes a `Step(type, params, id)`. Step types that have
 a registered decomposer function expand into multiple atomic steps.
 
 **Extension hook — custom decomposers:**
@@ -54,9 +54,9 @@ The rest of the system is unaffected.
 ## Current Architecture: Linear
 
 ```
-TDF dict
+dict IR
   ↓
-WorkflowDecomposer.decompose(tdf)
+WorkflowDecomposer.decompose(ir)
   ↓
 Workflow(steps=[step_0, step_1, ...], metadata={...})
   ↓
@@ -75,13 +75,13 @@ from execution_engine.workflow.decomposer import WorkflowDecomposer
 from execution_engine.workflow.state_manager import StateManager
 
 decomposer = WorkflowDecomposer()
-tdf = {
+ir = {
     "steps": [
         {"id": "step_0", "type": "get_tips", "tip_type": "DiTi_200uL"},
     ]
 }
 
-workflow = decomposer.decompose(tdf)
+workflow = decomposer.decompose(ir)
 print(workflow.steps[0].type)   # "get_tips"
 print(workflow.steps[0].id)     # "step_0"
 

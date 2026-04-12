@@ -45,7 +45,7 @@ class VariableMapper:
         if step_type in ("aspirate_volume", "dispense_volume", "mix_volume"):
             return self._map_liquid_operation(params, step_type)
 
-        # "mix" is an extended alias for mix_volume used in some TDFs.
+        # "mix" is an extended alias for mix_volume used in some IRs.
         # It accepts volume_uL and target in addition to the standard fields.
         if step_type == "mix":
             return self._map_mix(params)
@@ -135,7 +135,7 @@ class VariableMapper:
     def _map_empty_tips(self, params: Dict[str, Any]) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
         _set_if(result, "labware_empty_tips", params.get("labware_empty_tips"))
-        # Some TDFs use labware / liquid_class / well_offsets on empty_tips
+        # Some IRs use labware / liquid_class / well_offsets on empty_tips
         _set_if(result, "labware", params.get("labware"))
         _set_if(result, "liquid_class", params.get("liquid_class"))
         _set_if(result, "well_offsets", _resolve_well_offsets(params))

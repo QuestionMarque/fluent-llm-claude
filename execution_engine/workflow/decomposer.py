@@ -21,9 +21,9 @@ def register_decomposer(step_type: str):
 
 
 class WorkflowDecomposer:
-    """Translates a TDF dict into a Workflow of atomic Steps.
+    """Translates a dict IR into a Workflow of atomic Steps.
 
-    Currently operates linearly: each TDF step maps to one or more Steps
+    Currently operates linearly: each IR step maps to one or more Steps
     via the STEP_DECOMPOSERS registry. Step types without a decomposer
     pass through unchanged.
 
@@ -31,9 +31,9 @@ class WorkflowDecomposer:
     without altering the linear path for existing step types.
     """
 
-    def decompose(self, tdf: dict) -> Workflow:
-        """Convert a TDF dict into a Workflow."""
-        raw_steps = tdf.get("steps", [])
+    def decompose(self, ir: dict) -> Workflow:
+        """Convert a dict IR into a Workflow."""
+        raw_steps = ir.get("steps", [])
         steps: List[Step] = []
 
         for idx, raw in enumerate(raw_steps):
@@ -49,6 +49,6 @@ class WorkflowDecomposer:
             else:
                 steps.append(step)
 
-        # Preserve top-level TDF metadata (name, description, assumptions)
-        metadata = {k: v for k, v in tdf.items() if k != "steps"}
+        # Preserve top-level IR metadata (name, description, assumptions)
+        metadata = {k: v for k, v in ir.items() if k != "steps"}
         return Workflow(steps=steps, metadata=metadata)

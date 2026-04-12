@@ -46,10 +46,10 @@ class FeedbackBuilder:
     """Converts ValidationFeedback into structured output and LLM retry prompts."""
 
     def build_retry_prompt(self, feedback: ValidationFeedback, original_prompt: str) -> str:
-        """Build an LLM prompt that instructs the model to correct its TDF output."""
+        """Build an LLM prompt that instructs the model to correct its IR output."""
         lines = [
-            "The previous TDF output failed validation. Please correct the errors "
-            "listed below and re-generate a valid TDF JSON.",
+            "The previous IR output failed validation. Please correct the errors "
+            "listed below and re-generate a valid IR JSON.",
             "",
             "=== ERRORS ===",
         ]

@@ -2,8 +2,9 @@
 
 Python SDK for AI-driven lab automation on the Tecan Fluent liquid handler.
 
-Converts a natural-language IFU (Instruction for Use) or a predefined TDF
-(Test Definition Format) into validated, planned, and executable runtime calls
+Converts a natural-language IFU (Instruction for Use) or a predefined IR
+(Intermediate Representation — equivalent to what was previously called TDF,
+Test Definition Format) into validated, planned, and executable runtime calls
 through a PyFluent-style adapter.
 
 ---
@@ -11,15 +12,15 @@ through a PyFluent-style adapter.
 ## Architecture
 
 ```
-IFU text  ──or──  TDF library name
+IFU text  ──or──  IR library name
         │
         ▼
    [ llm/ ]  (optional — skipped in library mode)
-   LLMClient.generate_tdf(prompt)
+   LLMClient.generate_ir(prompt)
         │
         ▼
    [ workflow/ ]
-   WorkflowDecomposer.decompose(tdf)  →  Workflow
+   WorkflowDecomposer.decompose(ir)  →  Workflow
         │
         ▼
    [ validation/ ]
@@ -59,8 +60,8 @@ method/tip/liquid knowledge anywhere in the planning or validation layers.
 | `validation/` | Schema + semantic validation; LLM retry prompt builder |
 | `planner/` | CandidateSelector → ScoringEngine → VariableMapper |
 | `runtime/` | PyFluentAdapter; strict variable validation; hardware bridge |
-| `workflow/` | TDF → Workflow decomposer; StateManager; DependencyResolver hook |
-| `orchestration/` | ExecutionLoop; TDF library; library/LLM mode control |
+| `workflow/` | IR → Workflow decomposer; StateManager; DependencyResolver hook |
+| `orchestration/` | ExecutionLoop; IR library; library/LLM mode control |
 | `llm/` | LLMClient; PromptBuilder; schema (optional) |
 | `utils/` | Structured logger |
 
@@ -68,13 +69,13 @@ method/tip/liquid knowledge anywhere in the planning or validation layers.
 
 ## Execution Modes
 
-**Library mode** (`tdf_mode="library"`)
-- Deterministic: same TDF name → same workflow every time
+**Library mode** (`ir_mode="library"`)
+- Deterministic: same IR name → same workflow every time
 - Fail-fast: validation errors are code bugs, not runtime conditions
 - No network access required
 
-**LLM mode** (`tdf_mode="llm"`)
-- Dynamic: IFU text → LLM → TDF → workflow
+**LLM mode** (`ir_mode="llm"`)
+- Dynamic: IFU text → LLM → IR → workflow
 - Self-correcting: validation errors produce a retry prompt
 - Requires `OPENAI_API_KEY`
 
@@ -95,10 +96,10 @@ loop = ExecutionLoop(
     planner=Planner(registry=registry),
     runtime_adapter=PyFluentAdapter(runtime=your_fluent_runtime),
     validator=ValidatorWrapper(registry=registry),
-    tdf_mode="library",
+    ir_mode="library",
 )
 
-result = loop.run(tdf_name="distribution_mix_incubate")
+result = loop.run(ir_name="distribution_mix_incubate")
 print(result.success)
 ```
 

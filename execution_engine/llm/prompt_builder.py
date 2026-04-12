@@ -5,16 +5,16 @@ from ..models.workflow import STEP_SCHEMA
 
 
 class PromptBuilder:
-    """Builds prompts for LLM-driven IFU → TDF generation.
+    """Builds prompts for LLM-driven IFU → IR generation.
 
     Injects capability context (step types, tips, liquids, labware)
-    so the LLM can generate schema-valid TDF without hallucinating
+    so the LLM can generate schema-valid IR without hallucinating
     registry entries that don't exist.
     """
 
     SYSTEM_PROMPT = (
         "You are a lab automation expert. Convert the user's lab protocol "
-        "(IFU — Instructions for Use) into a structured TDF (Test Definition Format) "
+        "(IFU — Instructions for Use) into a structured IR (Intermediate Representation) "
         "JSON object.\n\n"
         "Rules:\n"
         "- Output must be valid JSON with a top-level 'steps' list.\n"
@@ -29,7 +29,7 @@ class PromptBuilder:
         self.registry = registry
 
     def build(self, ifu_text: str, context: Optional[str] = None) -> str:
-        """Build a complete prompt string for TDF generation."""
+        """Build a complete prompt string for IR generation."""
         parts = [self.SYSTEM_PROMPT]
 
         parts.append("\n=== SUPPORTED STEP TYPES ===")
@@ -60,5 +60,5 @@ class PromptBuilder:
             parts.append(f"\n=== CONTEXT ===\n{context}")
 
         parts.append(f"\n=== INSTRUCTION (IFU) ===\n{ifu_text}")
-        parts.append("\nRespond with a valid TDF JSON object only.")
+        parts.append("\nRespond with a valid IR JSON object only.")
         return "\n".join(parts)

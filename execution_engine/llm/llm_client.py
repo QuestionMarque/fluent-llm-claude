@@ -12,10 +12,10 @@ class StructuredJSONError(LLMClientError):
 
 
 class LLMClient:
-    """Optional LLM integration for IFU → TDF generation.
+    """Optional LLM integration for IFU → IR generation.
 
     The system must work fully without this class (library mode).
-    Only instantiate LLMClient when tdf_mode="llm".
+    Only instantiate LLMClient when ir_mode="llm".
 
     Supports OpenAI. Extend _call_provider() to add other providers.
     """
@@ -47,8 +47,8 @@ class LLMClient:
                 "openai package is not installed. Run: pip install openai"
             )
 
-    def generate_tdf(self, prompt: str) -> Dict[str, Any]:
-        """Generate a TDF dict from a natural-language prompt.
+    def generate_ir(self, prompt: str) -> Dict[str, Any]:
+        """Generate an IR dict from a natural-language prompt.
 
         Retries up to max_json_retries times on JSON parse failures.
         Raises StructuredJSONError after exhausting retries.

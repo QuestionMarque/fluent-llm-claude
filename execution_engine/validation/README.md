@@ -27,7 +27,7 @@ Registry-grounded checks. Detects:
 - Unknown labware (warnings)
 
 **Why two layers?**
-Schema errors are structural — they indicate a malformed TDF.
+Schema errors are structural — they indicate a malformed IR.
 Semantic errors require registry knowledge — they indicate a physically
 invalid or risky operation. Separating them keeps each layer testable
 in isolation and makes the error taxonomy clear.
