@@ -1,0 +1,300 @@
+# FluentControl Application Software 3.7 SP1
+# Capability registry for the fluent-llm execution engine.
+# All methods, tips, liquid classes, labware, and compatibility rules live here.
+# Planner and validation must read from this file — never hardcode knowledge elsewhere.
+
+devices:
+  FCA:
+    type: liquid_handler
+    capabilities: [aspirate, dispense, mix, reagent_distribution, sample_transfer]
+    channels: 1
+    constraints:
+      max_volume_uL: 1000
+
+  MCA96:
+    type: liquid_handler
+    capabilities: [aspirate, dispense, mix, reagent_distribution, sample_transfer]
+    channels: 96
+    constraints:
+      max_volume_uL: 200
+
+  MCA384:
+    type: liquid_handler
+    capabilities: [aspirate, dispense, mix, reagent_distribution, sample_transfer]
+    channels: 384
+    constraints:
+      max_volume_uL: 50
+
+  RGA:
+    type: gripper
+    capabilities: [transfer_labware]
+
+  Te_Shake:
+    type: shaker
+    capabilities: [incubate, mix]
+    constraints:
+      max_rpm: 2000
+
+  Heated_Incubator:
+    type: incubator
+    capabilities: [incubate]
+    constraints:
+      max_temperature_celsius: 95
+
+  FRIDA_Reader:
+    type: reader
+    capabilities: [read_absorbance, read_fluorescence]
+
+tips:
+  DiTi_10uL:
+    min_volume_uL: 0.5
+    max_volume_uL: 10
+    filter: false
+    purity_level: standard
+
+  DiTi_50uL:
+    min_volume_uL: 1
+    max_volume_uL: 50
+    filter: false
+    purity_level: standard
+
+  DiTi_200uL:
+    min_volume_uL: 2
+    max_volume_uL: 200
+    filter: false
+    purity_level: standard
+
+  DiTi_1000uL:
+    min_volume_uL: 10
+    max_volume_uL: 1000
+    filter: false
+    purity_level: standard
+
+  DiTi_200uL_Filter:
+    min_volume_uL: 2
+    max_volume_uL: 200
+    filter: true
+    purity_level: high
+
+  DiTi_1000uL_Filter:
+    min_volume_uL: 10
+    max_volume_uL: 1000
+    filter: true
+    purity_level: high
+
+liquid_classes:
+  Water:
+    dispense_mode: standard
+    compatible_tips: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  Serum:
+    dispense_mode: viscous
+    compatible_tips: [DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  DMSO:
+    dispense_mode: volatile
+    compatible_tips: [DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  Glycerol:
+    dispense_mode: viscous
+    compatible_tips: [DiTi_1000uL, DiTi_1000uL_Filter]
+
+  Buffer:
+    dispense_mode: standard
+    compatible_tips: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+labware:
+  Plate_96_Well:
+    format: SBS
+    wells: 96
+    max_volume_uL: 200
+    geometry: flat
+
+  Plate_384_Well:
+    format: SBS
+    wells: 384
+    max_volume_uL: 100
+    geometry: flat
+
+  Reagent_Trough_100mL:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
+  Tube_Rack_1.5mL:
+    format: tube_rack
+    wells: 24
+    max_volume_uL: 1500
+    geometry: round
+
+  Tip_Rack_200uL:
+    format: tip_rack
+    wells: 96
+    max_volume_uL: 0
+    geometry: flat
+
+  Tip_Rack_1000uL:
+    format: tip_rack
+    wells: 96
+    max_volume_uL: 0
+    geometry: flat
+
+  Waste_Container:
+    format: waste
+    wells: 1
+    max_volume_uL: 500000
+    geometry: flat
+
+methods:
+  ReagentDistribution:
+    description: Distribute a reagent from a source trough into target plate wells
+    supports: [reagent_distribution]
+    tip_types: [DiTi_50uL, DiTi_200uL, DiTi_1000uL]
+    liquid_classes: [Water, Buffer, Serum]
+    min_volume_uL: 1
+    max_volume_uL: 1000
+    variables:
+      - volumes
+      - tip_type
+      - liquid_class
+      - labware_source
+      - labware_target
+      - selected_wells_source
+      - selected_wells_target
+
+  SampleTransfer:
+    description: Transfer individual samples between source and target wells
+    supports: [sample_transfer]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol]
+    min_volume_uL: 0.5
+    max_volume_uL: 1000
+    variables:
+      - volumes
+      - tip_type
+      - liquid_class
+      - labware_source
+      - labware_target
+      - selected_wells_source
+      - selected_wells_target
+
+  AspirateVolume:
+    description: Aspirate specified volumes from labware wells
+    supports: [aspirate_volume]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol]
+    min_volume_uL: 0.5
+    max_volume_uL: 1000
+    variables:
+      - volumes
+      - labware
+      - liquid_class
+      - well_offsets
+
+  DispenseVolume:
+    description: Dispense specified volumes into labware wells
+    supports: [dispense_volume]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol]
+    min_volume_uL: 0.5
+    max_volume_uL: 1000
+    variables:
+      - volumes
+      - labware
+      - liquid_class
+      - well_offsets
+
+  MixVolume:
+    description: Mix contents of labware wells by aspirate/dispense cycling
+    supports: [mix_volume]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL]
+    liquid_classes: [Water, Buffer, Serum]
+    min_volume_uL: 2
+    max_volume_uL: 200
+    variables:
+      - volumes
+      - labware
+      - liquid_class
+      - well_offsets
+      - cycles
+
+  Incubate:
+    description: Incubate labware at a specified temperature for a set duration
+    supports: [incubate]
+    tip_types: []
+    liquid_classes: []
+    min_volume_uL: 0
+    max_volume_uL: 0
+    variables:
+      - duration_seconds
+      - temperature_celsius
+      - device
+
+  TransferLabware:
+    description: Move labware between worktable positions using the gripper arm
+    supports: [transfer_labware]
+    tip_types: []
+    liquid_classes: []
+    min_volume_uL: 0
+    max_volume_uL: 0
+    variables:
+      - labware_name
+      - target_location
+      - target_position
+
+  GetTips:
+    description: Pick up a tip rack for subsequent liquid operations
+    supports: [get_tips]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+    liquid_classes: []
+    min_volume_uL: 0
+    max_volume_uL: 0
+    variables:
+      - tip_type
+
+  DropTipsToLocation:
+    description: Drop loaded tips into a waste container or specific labware
+    supports: [drop_tips_to_location]
+    tip_types: []
+    liquid_classes: []
+    min_volume_uL: 0
+    max_volume_uL: 0
+    variables:
+      - labware
+
+  EmptyTips:
+    description: Eject current tips to the default waste location
+    supports: [empty_tips]
+    tip_types: []
+    liquid_classes: []
+    min_volume_uL: 0
+    max_volume_uL: 0
+    variables:
+      - labware_empty_tips
+
+# Compatibility matrix: tip_name -> [allowed liquid classes]
+# If a tip has no entry, it is assumed compatible with everything.
+tip_liquid_compatibility:
+  DiTi_10uL: [Water, Buffer]
+  DiTi_50uL: [Water, Buffer, Serum]
+  DiTi_200uL: [Water, Buffer, Serum]
+  DiTi_1000uL: [Water, Buffer, Serum, Glycerol]
+  DiTi_200uL_Filter: [Water, Buffer, Serum, DMSO]
+  DiTi_1000uL_Filter: [Water, Buffer, Serum, DMSO, Glycerol]
+
+rules:
+  - name: use_filter_tips_for_dmso
+    condition: liquid_class == DMSO
+    action: require_filter_tip
+    severity: error
+
+  - name: high_volume_tip_preference
+    condition: volume_uL > 200
+    action: prefer_1000uL_tip
+    severity: warning
+
+  - name: low_volume_precision
+    condition: volume_uL < 2
+    action: prefer_10uL_tip
+    severity: warning
