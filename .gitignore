@@ -36,6 +36,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.python-version
+pyproject.toml
+uv.lock
 
 # Build output
 dist/
