@@ -264,7 +264,7 @@ methods:
       - labware
 
   EmptyTips:
-    description: Eject current tips to the default waste location
+    description: Empty tips at defined location
     supports: [empty_tips]
     tip_types: []
     liquid_classes: []
