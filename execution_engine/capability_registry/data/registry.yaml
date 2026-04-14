@@ -45,6 +45,14 @@ devices:
     type: reader
     capabilities: [read_absorbance, read_fluorescence]
 
+  Nest_61mm:
+    type: deck_location
+    capabilities: [transfer_labware]
+
+  Hotel:
+    type: plate_hotel
+    capabilities: [transfer_labware]
+
 tips:
   DiTi_10uL:
     min_volume_uL: 0.5
@@ -64,7 +72,19 @@ tips:
     filter: false
     purity_level: standard
 
+  FCA_DiTi_200uL:
+    min_volume_uL: 2
+    max_volume_uL: 200
+    filter: false
+    purity_level: standard
+
   DiTi_1000uL:
+    min_volume_uL: 10
+    max_volume_uL: 1000
+    filter: false
+    purity_level: standard
+
+  FCA_DiTi_1000uL:
     min_volume_uL: 10
     max_volume_uL: 1000
     filter: false
@@ -79,6 +99,12 @@ tips:
   DiTi_1000uL_Filter:
     min_volume_uL: 10
     max_volume_uL: 1000
+    filter: true
+    purity_level: high
+
+  filtered_300uL:
+    min_volume_uL: 5
+    max_volume_uL: 300
     filter: true
     purity_level: high
 
@@ -103,8 +129,62 @@ liquid_classes:
     dispense_mode: standard
     compatible_tips: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
 
+  standard_aqueous:
+    dispense_mode: standard
+    compatible_tips: [DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter, filtered_300uL]
+
+  Water_Free_Single:
+    dispense_mode: standard
+    compatible_tips: [DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  Water_Free_Multi:
+    dispense_mode: standard
+    compatible_tips: [DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  Water_Free_Mix:
+    dispense_mode: mix
+    compatible_tips: [DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  Water Mix:
+    dispense_mode: mix
+    compatible_tips: [DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  LIQ_CLASS_TRBC:
+    dispense_mode: viscous
+    compatible_tips: [DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  LIQ_CLASS_ANTIGEN:
+    dispense_mode: standard
+    compatible_tips: [DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  LIQ_CLASS_ANTISERA:
+    dispense_mode: viscous
+    compatible_tips: [DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
+  Empty Tip:
+    dispense_mode: empty
+    compatible_tips: [DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+
 labware:
   Plate_96_Well:
+    format: SBS
+    wells: 96
+    max_volume_uL: 200
+    geometry: flat
+
+  plate:
+    format: SBS
+    wells: 96
+    max_volume_uL: 200
+    geometry: flat
+
+  plate_96:
+    format: SBS
+    wells: 96
+    max_volume_uL: 200
+    geometry: flat
+
+  96_plate:
     format: SBS
     wells: 96
     max_volume_uL: 200
@@ -146,12 +226,120 @@ labware:
     max_volume_uL: 500000
     geometry: flat
 
+  DiTi_waste:
+    format: waste
+    wells: 1
+    max_volume_uL: 500000
+    geometry: flat
+
+  DITI_WASTE:
+    format: waste
+    wells: 1
+    max_volume_uL: 500000
+    geometry: flat
+
+  Liquid_waste:
+    format: waste
+    wells: 1
+    max_volume_uL: 500000
+    geometry: flat
+
+  waste_container:
+    format: waste
+    wells: 1
+    max_volume_uL: 500000
+    geometry: flat
+
+  dilution_plate:
+    format: SBS
+    wells: 96
+    max_volume_uL: 200
+    geometry: flat
+
+  sample_plate:
+    format: SBS
+    wells: 96
+    max_volume_uL: 200
+    geometry: flat
+
+  plate_source:
+    format: SBS
+    wells: 96
+    max_volume_uL: 200
+    geometry: flat
+
+  plate_target:
+    format: SBS
+    wells: 96
+    max_volume_uL: 200
+    geometry: flat
+
+  tube_runner:
+    format: tube_rack
+    wells: 24
+    max_volume_uL: 1500
+    geometry: round
+
+  sample_tubes:
+    format: tube_rack
+    wells: 24
+    max_volume_uL: 1500
+    geometry: round
+
+  diluent_trough:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
+  diluent_reservoir:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
+  reagentA:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
+  Antisera_1:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
+  Antisera_2:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
+  LABWARE_ANTIGEN_A:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
+  LABWARE_TRBC:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
+  tRBC:
+    format: trough
+    wells: 1
+    max_volume_uL: 100000
+    geometry: trough
+
 methods:
   ReagentDistribution:
     description: Distribute a reagent from a source trough into target plate wells
     supports: [reagent_distribution]
-    tip_types: [DiTi_50uL, DiTi_200uL, DiTi_1000uL]
-    liquid_classes: [Water, Buffer, Serum]
+    tip_types: [DiTi_50uL, DiTi_200uL, FCA_DiTi_200uL, DiTi_1000uL, FCA_DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter, filtered_300uL]
+    liquid_classes: [Water, Buffer, Serum, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA]
     min_volume_uL: 1
     max_volume_uL: 1000
     variables:
@@ -166,8 +354,8 @@ methods:
   SampleTransfer:
     description: Transfer individual samples between source and target wells
     supports: [sample_transfer]
-    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
-    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, FCA_DiTi_200uL, DiTi_1000uL, FCA_DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter, filtered_300uL]
+    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA]
     min_volume_uL: 0.5
     max_volume_uL: 1000
     variables:
@@ -182,8 +370,8 @@ methods:
   AspirateVolume:
     description: Aspirate specified volumes from labware wells
     supports: [aspirate_volume]
-    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
-    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, FCA_DiTi_200uL, DiTi_1000uL, FCA_DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter, filtered_300uL]
+    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA]
     min_volume_uL: 0.5
     max_volume_uL: 1000
     variables:
@@ -195,8 +383,8 @@ methods:
   DispenseVolume:
     description: Dispense specified volumes into labware wells
     supports: [dispense_volume]
-    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
-    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, FCA_DiTi_200uL, DiTi_1000uL, FCA_DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter, filtered_300uL]
+    liquid_classes: [Water, Buffer, Serum, DMSO, Glycerol, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA]
     min_volume_uL: 0.5
     max_volume_uL: 1000
     variables:
@@ -208,8 +396,8 @@ methods:
   MixVolume:
     description: Mix contents of labware wells by aspirate/dispense cycling
     supports: [mix_volume, mix]
-    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL]
-    liquid_classes: [Water, Buffer, Serum]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, FCA_DiTi_200uL, DiTi_1000uL, FCA_DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter, filtered_300uL]
+    liquid_classes: [Water, Buffer, Serum, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA]
     min_volume_uL: 2
     max_volume_uL: 1000
     variables:
@@ -246,7 +434,7 @@ methods:
   GetTips:
     description: Pick up a tip rack for subsequent liquid operations
     supports: [get_tips]
-    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter]
+    tip_types: [DiTi_10uL, DiTi_50uL, DiTi_200uL, FCA_DiTi_200uL, DiTi_1000uL, FCA_DiTi_1000uL, DiTi_200uL_Filter, DiTi_1000uL_Filter, filtered_300uL]
     liquid_classes: []
     min_volume_uL: 0
     max_volume_uL: 0
@@ -278,10 +466,13 @@ methods:
 tip_liquid_compatibility:
   DiTi_10uL: [Water, Buffer]
   DiTi_50uL: [Water, Buffer, Serum]
-  DiTi_200uL: [Water, Buffer, Serum]
-  DiTi_1000uL: [Water, Buffer, Serum, Glycerol]
-  DiTi_200uL_Filter: [Water, Buffer, Serum, DMSO]
-  DiTi_1000uL_Filter: [Water, Buffer, Serum, DMSO, Glycerol]
+  DiTi_200uL: [Water, Buffer, Serum, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA, Empty Tip]
+  FCA_DiTi_200uL: [Water, Buffer, Serum, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA, Empty Tip]
+  DiTi_1000uL: [Water, Buffer, Serum, Glycerol, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA, Empty Tip]
+  FCA_DiTi_1000uL: [Water, Buffer, Serum, Glycerol, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA, Empty Tip]
+  DiTi_200uL_Filter: [Water, Buffer, Serum, DMSO, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA, Empty Tip]
+  DiTi_1000uL_Filter: [Water, Buffer, Serum, DMSO, Glycerol, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix, LIQ_CLASS_TRBC, LIQ_CLASS_ANTIGEN, LIQ_CLASS_ANTISERA, Empty Tip]
+  filtered_300uL: [Water, Buffer, Serum, standard_aqueous, Water_Free_Single, Water_Free_Multi, Water_Free_Mix, Water Mix]
 
 rules:
   - name: use_filter_tips_for_dmso
