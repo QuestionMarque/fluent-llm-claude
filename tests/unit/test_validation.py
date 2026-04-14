@@ -47,19 +47,25 @@ class TestSchemaValidation:
 
     def test_valid_full_distribution_step(self, validator):
         step = Step(type="reagent_distribution", params={
+            "labware_empty_tips": "Waste_Container",
             "volumes": [100],
+            "sample_count": 1,
+            "DiTi_type": "DiTi_200uL",
+            "DiTi_waste": "Waste_Container",
             "labware_source": "Reagent_Trough_100mL",
             "labware_target": "Plate_96_Well",
-            "tip_type": "DiTi_200uL",
             "liquid_class": "Buffer",
+            "selected_wells_source": [0],
+            "selected_wells_target": [0],
         })
         feedback = validator.validate_workflow(Workflow(steps=[step]))
         assert feedback.is_valid
 
-    def test_empty_tips_has_no_required_fields(self, validator):
+    def test_empty_tips_requires_labware(self, validator):
         step = Step(type="empty_tips", params={})
         feedback = validator.validate_workflow(Workflow(steps=[step]))
-        assert feedback.is_valid
+        assert not feedback.is_valid
+        assert any(e.type == "missing_required_field" for e in feedback.errors)
 
 
 class TestSemanticValidation:

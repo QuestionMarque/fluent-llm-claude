@@ -18,11 +18,11 @@ class TestStepSchema:
         for field in ("volumes", "labware_source", "labware_target"):
             assert field in schema["required"]
 
-    def test_incubate_required_duration(self):
-        assert "duration_seconds" in STEP_SCHEMA["incubate"]["required"]
+    def test_mix_volume_optional_cycles(self):
+        assert "cycles" in STEP_SCHEMA["mix_volume"]["optional"]
 
     def test_get_tips_required_tip_type(self):
-        assert "tip_type" in STEP_SCHEMA["get_tips"]["required"]
+        assert "diti_type" in STEP_SCHEMA["get_tips"]["required"]
 
     def test_transfer_labware_required_fields(self):
         schema = STEP_SCHEMA["transfer_labware"]
@@ -33,17 +33,15 @@ class TestStepSchema:
         expected = {
             "reagent_distribution", "sample_transfer",
             "aspirate_volume", "dispense_volume", "mix_volume",
-            "incubate", "transfer_labware", "get_tips",
+            "transfer_labware", "get_tips",
             "drop_tips_to_location", "empty_tips",
         }
         assert expected.issubset(STEP_SCHEMA.keys())
 
-    def test_tip_aliases_in_optional(self):
-        # Steps with variable tip selection should support all aliases
+    def test_distribution_tip_fields_are_required(self):
         for step_type in ("reagent_distribution", "sample_transfer"):
-            optional = STEP_SCHEMA[step_type]["optional"]
-            assert "DiTi_type" in optional
-            assert "diti_type" in optional
+            required = STEP_SCHEMA[step_type]["required"]
+            assert "DiTi_type" in required
 
 
 class TestStep:
@@ -53,8 +51,8 @@ class TestStep:
         assert step.id is None
 
     def test_with_params_and_id(self):
-        step = Step(type="get_tips", params={"tip_type": "DiTi_200uL"}, id="step_0")
-        assert step.params["tip_type"] == "DiTi_200uL"
+        step = Step(type="get_tips", params={"diti_type": "DiTi_200uL"}, id="step_0")
+        assert step.params["diti_type"] == "DiTi_200uL"
         assert step.id == "step_0"
 
 
@@ -65,7 +63,7 @@ class TestWorkflow:
         assert wf.metadata == {}
 
     def test_with_steps(self):
-        steps = [Step(type="incubate", params={"duration_seconds": 600})]
+        steps = [Step(type="get_tips", params={"diti_type": "DiTi_200uL"})]
         wf = Workflow(steps=steps, metadata={"name": "test"})
         assert len(wf.steps) == 1
         assert wf.metadata["name"] == "test"
