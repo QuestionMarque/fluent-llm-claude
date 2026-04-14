@@ -1,0 +1,40 @@
+{
+    "assay_id": "sample_tube_to_plate_replicates",
+    "intent": "Transfer samples from tubes to a plate with replicates",
+    "steps": [
+        {
+        "type": "sample_transfer",
+        "params": {
+            "labware_empty_tips": "Liquid_waste",
+            "volumes": 50,
+            "sample_count": 16,
+            "DiTi_type": "FCA_DiTi_10000uL",
+            "DiTi_waste": "DiTi_waste",
+            "labware_source": "tube_runner",
+            "labware_target": "dilution_plate",
+
+            "selected_wells_source": {
+            "range": {
+                "start": 0,
+                "stop": 16
+            }
+            },
+
+            "selected_wells_target": {
+            "range": {
+                "start": 0,
+                "stop": 96
+            }
+            },
+
+            "liquid_class": "Water_Free_Multi",
+
+            "sample_direction": "column_wise",
+            "number_replicates": 3,
+            "replicate_direction": "row_wise",
+
+            "tips_per_well_source": 1
+        }
+        }
+    ]
+}

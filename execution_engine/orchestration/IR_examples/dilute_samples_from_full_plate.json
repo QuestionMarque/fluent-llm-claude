@@ -1,0 +1,57 @@
+{
+  "assay_id": "Dilute Samples from Full Plate",
+  "intent": "Dilute samples from a full 96-well plate",
+  "steps": [
+    {
+      "type": "reagent_distribution",
+      "params": {
+        "labware_empty_tips": "diluent_trough",
+        "volumes": 25,
+        "sample_count": 96,
+        "DiTi_type": "FCA_DiTi_1000uL",
+        "DiTi_waste": "DiTi_waste",
+        "labware_source": "diluent_trough",
+        "labware_target": "dilution_plate",
+        "selected_wells_source": {
+          "range": {
+            "start": 0,
+            "stop": 96
+          }
+        },
+        "selected_wells_target": {
+          "range": {
+            "start": 0,
+            "stop": 96
+          }
+        },
+        "liquid_class": "Water_Free_Multi"
+      }
+    },
+    {
+      "type": "sample_transfer",
+      "params": {
+        "labware_empty_tips": "Liquid_waste",
+        "volumes": 25,
+        "sample_count": 96,
+        "DiTi_type": "FCA_DiTi_200uL",
+        "DiTi_waste": "DiTi_waste",
+        "labware_source": "sample_plate",
+        "labware_target": "dilution_plate",
+        "selected_wells_source": {
+          "range": {
+            "start": 0,
+            "stop": 96
+          }
+        },
+        "selected_wells_target": {
+          "range": {
+            "start": 0,
+            "stop": 96
+          }
+        },
+        "liquid_class": "Water_Free_Single",
+        "tips_per_well_source": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "assay_id": "dilute_samples_from_tube",
+  "intent": "Distribute diluent into a 96-well plate and dilute samples from a tube into the plate",
+  "steps": [
+    {
+      "type": "get_tips",
+      "params": {
+        "diti_type": "FCA_DiTi_200uL"
+      }
+    },
+    {
+      "type": "aspirate_volume",
+      "params": {
+        "volumes": 100,
+        "labware": "diluent_reservoir",
+        "liquid_class": "Water_Free_Multi"
+      }
+    },
+    {
+      "type": "dispense_volume",
+      "params": {
+        "volumes": 50,
+        "labware": "dilution_plate",
+        "liquid_class": "Water_Free_Multi",
+        "well_offset": "list(range(8))"
+      }
+    },
+    {
+      "type": "dispense_volume",
+      "params": {
+        "volumes": 50,
+        "labware": "dilution_plate",
+        "liquid_class": "Water_Free_Multi",
+        "well_offset": "list(range(8,16))"
+      }
+    },
+    {
+      "type": "drop_tips_to_location",
+      "params": {
+        "labware": "DiTi_waste"
+      }
+    },
+    {
+      "type": "get_tips",
+      "params": {
+        "diti_type": "FCA_DiTi_200uL"
+      }
+    },
+    {
+      "type": "aspirate_volume",
+      "params": {
+        "volumes": 50,
+        "labware": "tube_runner",
+        "liquid_class": "Water_Free_Single",
+        "well_offset": "list(range(8))"
+      }
+    },
+    {
+      "type": "dispense_volume",
+      "params": {
+        "volumes": 50,
+        "labware": "dilution_plate",
+        "liquid_class": "Water_Free_Single",
+        "well_offset": "list(range(8))"
+      }
+    },
+    {
+      "type": "drop_tips_to_location",
+      "params": {
+        "labware": "DiTi_waste"
+      }
+    },
+    {
+      "type": "get_tips",
+      "params": {
+        "diti_type": "FCA_DiTi_200uL"
+      }
+    },
+    {
+      "type": "aspirate_volume",
+      "params": {
+        "volumes": 50,
+        "labware": "tube_runner",
+        "liquid_class": "Water_Free_Single",
+        "well_offset": "list(range(8,16))"
+      }
+    },
+    {
+      "type": "dispense_volume",
+      "params": {
+        "volumes": 50,
+        "labware": "dilution_plate",
+        "liquid_class": "Water_Free_Single",
+        "well_offset": "list(range(8,16))"
+      }
+    },
+    {
+      "type": "drop_tips_to_location",
+      "params": {
+        "labware": "DiTi_waste"
+      }
+    }
+  ]
+}

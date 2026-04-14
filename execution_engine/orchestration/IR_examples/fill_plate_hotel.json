@@ -1,0 +1,132 @@
+{
+    "assay_id": "fill_plate_hotel",
+    "intent": "Fill a plate and move it to the hotel",
+    "steps": [
+        {
+        "type": "transfer_labware",
+        "params": {
+            "labware_name": "96_plate",
+            "target_location": "Nest_61mm",
+            "target_position": 1
+        }
+        },
+
+        {
+        "type": "reagent_distribution",
+        "params": {
+            "labware_empty_tips": "Liquid_waste",
+            "volumes": 50,
+            "sample_count": 16,
+            "DiTi_type": "FCA_DiTi_1000uL",
+            "DiTi_waste": "DiTi_waste",
+            "labware_source": "reagentA",
+            "labware_target": "96_plate",
+            "selected_wells_source": 0,
+            "selected_wells_target": {
+            "range": {
+                "start": 0,
+                "stop": 96
+            }
+            },
+            "liquid_class": "Water_Free_Multi"
+        }
+        },
+
+        {
+        "type": "get_tips",
+        "params": {
+            "diti_type": "FCA_DiTi_200uL"
+        }
+        },
+
+        {
+        "type": "aspirate_volume",
+        "params": {
+            "volumes": 50,
+            "labware": "sample_tubes",
+            "liquid_class": "Water_Free_Single",
+            "well_offset": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": 50,
+            "labware": "96_plate",
+            "liquid_class": "Water_Free_Single",
+            "well_offset": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "drop_tips_to_location",
+        "params": {
+            "labware": "DiTi_waste"
+        }
+        },
+
+        {
+        "type": "get_tips",
+        "params": {
+            "diti_type": "FCA_DiTi_200uL"
+        }
+        },
+
+        {
+        "type": "aspirate_volume",
+        "params": {
+            "volumes": 50,
+            "labware": "sample_tubes",
+            "liquid_class": "Water_Free_Single",
+            "well_offset": {
+            "range": {
+                "start": 8,
+                "stop": 16
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": 50,
+            "labware": "96_plate",
+            "liquid_class": "Water_Free_Single",
+            "well_offset": {
+            "range": {
+                "start": 8,
+                "stop": 16
+            }
+            }
+        }
+        },
+
+        {
+        "type": "drop_tips_to_location",
+        "params": {
+            "labware": "DiTi_waste"
+        }
+        },
+
+        {
+        "type": "transfer_labware",
+        "params": {
+            "labware_name": "96_plate",
+            "target_location": "Hotel",
+            "target_position": 1
+        }
+        }
+    ]
+}

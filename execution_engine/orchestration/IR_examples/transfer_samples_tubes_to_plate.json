@@ -1,0 +1,39 @@
+{
+  "assay_id": "transfer_samples_tubes_to_plate",
+  "intent": "Transfer samples from tubes to a plate using tips",
+  "steps": [
+    {
+        "type":"get_tips",
+        "params":{
+            "diti_type":"FCA_DiTi_200uL"
+        }
+    },
+    {
+        "type":"aspirate_volume",
+        "params":{
+            "volumes": 100,
+            "labware": "tube_runner",
+            "liquid_class": "Water_Free_Single",
+            "well_offsets": "list(range(8))"
+        }
+    },
+    {
+        "type":"dispense_volume",
+        "params":{
+            "volumes": 100,
+            "labware": "dilution_plate",
+            "liquid_class": "Water_Free_Single",
+            "well_offsets": "list(range(8))"
+        }
+    },
+    {
+        "type":"drop_tips_to_location",
+        "params":{
+            "labware":"DiTi_waste"
+        }
+    }
+
+  ],
+  "open_questions": [],
+  "assumptions": []
+}
