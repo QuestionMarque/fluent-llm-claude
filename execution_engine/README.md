@@ -61,7 +61,7 @@ method/tip/liquid knowledge anywhere in the planning or validation layers.
 | `planner/` | CandidateSelector → ScoringEngine → VariableMapper |
 | `runtime/` | PyFluentAdapter; strict variable validation; hardware bridge |
 | `workflow/` | IR → Workflow decomposer; StateManager; DependencyResolver hook |
-| `orchestration/` | ExecutionLoop; IR library; library/LLM mode control |
+| `orchestration/` | ExecutionLoop; `IR_examples/` JSON files; library/LLM mode control |
 | `llm/` | LLMClient; PromptBuilder; schema (optional) |
 | `utils/` | Structured logger |
 
@@ -99,7 +99,7 @@ loop = ExecutionLoop(
     ir_mode="library",
 )
 
-result = loop.run(ir_name="distribution_mix_incubate")
+result = loop.run(ir_name="pipetting_cycle")
 print(result.success)
 ```
 

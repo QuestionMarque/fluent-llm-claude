@@ -54,22 +54,31 @@ No hardcoded method/tip/liquid knowledge anywhere else.
 
 ## Execution modes
 
-- **`ir_mode="library"`** — loads IR from `ir_library`; fail-fast on validation errors; deterministic.
+- **`ir_mode="library"`** — loads IR from `orchestration/IR_examples/<name>.json`; fail-fast on validation errors; deterministic.
 - **`ir_mode="llm"`** — generates IR via LLM; retries with corrective prompt up to `max_retries`.
 
 ---
 
-## Two IR formats in the library
+## IR source: `IR_examples/` (JSON files)
 
-`execution_engine/orchestration/ir_library.py` holds two kinds of entries:
+`execution_engine/orchestration/IR_examples/` holds one JSON file per
+predefined workflow. `ExecutionLoop._obtain_ir` loads
+`IR_examples/<ir_name>.json` in library mode. Each file is a Dict IR that
+goes through the full pipeline: decompose → schema + semantic validation →
+plan → execute. Because library IRs are authored, validation failure is
+treated as a code bug (fail-fast, no retries).
 
-| Format | Keys | Execution path |
-|--------|------|----------------|
-| Dict IR | `*_dict` names (e.g. `simple_distribution_dict`) | decompose → full schema+semantic validation → fail-fast in library mode |
-| Workflow IR | all others (e.g. `simple_distribution`) | skip decomposition; advisory-only semantic validation; never fail-fast |
+Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
+`transfer_samples_plate_to_plate`, `transfer_samples_tubes_to_plate`,
+`dilute_samples_from_tube`, `dilute_samples_from_full_plate`,
+`serial_dilution`, `sample_tube_to_plate_replicates`, `fill_plate_hotel`,
+`distribute_antisera`, `distribute_antigens`, `add_tRBC`.
 
-`get_ir(name)` returns `Union[Dict, Workflow]`. The execution loop checks
-`isinstance(result, Workflow)` to pick the path.
+> Note: `ExecutionLoop.run` still contains a branch for pre-built
+> `Workflow` instances (advisory-only semantic validation, no fail-fast).
+> That branch is dormant for library mode now that IR is loaded from JSON
+> (always a dict), but it remains reachable for callers that pass a
+> `Workflow` directly via the LLM path or tests.
 
 ---
 
@@ -83,7 +92,7 @@ No hardcoded method/tip/liquid knowledge anywhere else.
 | `planner/` | `CandidateSelector` → `ScoringEngine` → `VariableMapper` |
 | `runtime/` | `PyFluentAdapter`; strict variable validation |
 | `workflow/` | `WorkflowDecomposer`; `StateManager`; `DependencyResolver` hook |
-| `orchestration/` | `ExecutionLoop`; `ir_library` |
+| `orchestration/` | `ExecutionLoop`; `IR_examples/` (JSON IRs) |
 | `llm/` | `LLMClient`; `PromptBuilder`; `IR_SCHEMA` |
 
 ---
@@ -92,7 +101,7 @@ No hardcoded method/tip/liquid knowledge anywhere else.
 
 - `execution_engine/models/workflow.py` — `STEP_SCHEMA` (single source of truth for step structure)
 - `execution_engine/capability_registry/data/registry.yaml` — all methods, tips, liquid classes, labware, rules
-- `execution_engine/orchestration/ir_library.py` — all predefined IRs
+- `execution_engine/orchestration/IR_examples/*.json` — all predefined IRs (one file per workflow)
 - `execution_engine/orchestration/execution_loop.py` — `ExecutionLoop`; `ir_mode`/`ir_name` params
 - `main.py` — runnable demo in library mode with stub runtime
 
@@ -103,7 +112,11 @@ No hardcoded method/tip/liquid knowledge anywhere else.
 - Single source of truth in `models/workflow.py`.
 - Required fields enforced in schema validation layer only — never duplicated elsewhere.
 - Tip type aliases recognized everywhere: `tip_type`, `DiTi_type`, `diti_type`.
-- `mix` step type is an alias for `mix_volume` with extended field names (`volume_uL`, `target`).
+- Step types currently defined: `reagent_distribution`, `sample_transfer`,
+  `aspirate_volume`, `dispense_volume`, `mix_volume`, `transfer_labware`,
+  `get_tips`, `drop_tips_to_location`, `empty_tips`.
+- `mix` and `incubate` were removed — they are not compatible with Fluent
+  Control. Use `mix_volume` for mixing.
 
 ---
 
@@ -128,7 +141,7 @@ tests/unit/
 ```
 
 Run with: `python3 -m pytest tests/ -q`
-Current count: 95 tests, all passing.
+Current count: 82 tests, all passing.
 
 ---
 
