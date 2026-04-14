@@ -103,30 +103,6 @@ STEP_SCHEMA: Dict[str, Dict[str, List[str]]] = {
             "cycles",
         ],
     },
-    # "mix" is an alias-style step used in some IRs. Uses volume_uL / target
-    # instead of volumes / labware. Maps to MixVolume method in the registry.
-    # not a valid FC step
-    "mix": {
-        "required": [],
-        "optional": [
-            "volumes", "volume_uL",
-            "cycles",
-            "labware", "target",
-            "liquid_class",
-            "tip_type", "DiTi_type", "diti_type",
-            "well_offsets", "well_offset",
-            "tip_indices",
-        ],
-    },
-    # not a valid FC step — used in some IRs as an alias for incubate with temp/time
-    "incubate": {
-        "required": ["duration_seconds"],
-        "optional": [
-            "temperature_celsius", "device",
-            # Extended aliases used in some IRs
-            "time_s", "location", "labware",
-        ],
-    },
     "transfer_labware": {
         "required": [
             "labware_name",
