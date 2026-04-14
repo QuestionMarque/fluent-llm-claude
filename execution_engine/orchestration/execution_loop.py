@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
+import json
+from pathlib import Path
 
 from ..models.workflow import Workflow
 from ..models.plan import Plan
@@ -11,7 +13,6 @@ from ..validation.validator_wrapper import ValidatorWrapper
 from ..validation.feedback_builder import FeedbackBuilder
 from ..planner.planner import Planner
 from ..runtime.pyfluent_adapter import PyFluentAdapter
-from . import ir_library
 
 
 @dataclass
@@ -190,7 +191,17 @@ class ExecutionLoop:
         if self.ir_mode == "library":
             if not ir_name:
                 raise ValueError("ir_name must be provided when ir_mode='library'.")
-            return ir_library.get_ir(ir_name)
+            
+            base_path = Path(__file__).resolve().parent
+            file_path = base_path / "IR_examples" / f"{ir_name}.json"
+
+            if not file_path.exists():
+                raise ValueError(f"IR '{ir_name}' not found in IR_examples")
+
+            with open(file_path, "r") as f:
+                generated_ir = json.load(f)
+
+            return generated_ir            
 
         if self.ir_mode == "llm":
             if self.llm_client is None:
