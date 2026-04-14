@@ -8,7 +8,7 @@
             "labware_empty_tips": "Liquid_waste",
             "volumes": 50,
             "sample_count": 16,
-            "DiTi_type": "FCA_DiTi_10000uL",
+            "DiTi_type": "FCA_DiTi_1000uL",
             "DiTi_waste": "DiTi_waste",
             "labware_source": "tube_runner",
             "labware_target": "dilution_plate",
