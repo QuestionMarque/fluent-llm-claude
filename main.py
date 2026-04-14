@@ -80,7 +80,7 @@ def main():
     )
 
     # 4. Run a predefined IR from the library
-    ir_name = "dilute_samples_from_full_plate"
+    ir_name = "pipetting_cycle"
     print(f"\n[Run] Executing IR: '{ir_name}'")
     result = loop.run(ir_name=ir_name)
 
@@ -116,6 +116,8 @@ def main():
     if result.validation_feedback:
         fb = result.validation_feedback
         print(f"\n  Validation: {len(fb.errors)} error(s), {len(fb.warnings)} warning(s)")
+        for e in fb.errors:
+            print(f"    [ERROR] {e.message}")
         for w in fb.warnings:
             print(f"    [WARN] {w.message}")
 

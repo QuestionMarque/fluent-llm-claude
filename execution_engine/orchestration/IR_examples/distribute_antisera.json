@@ -1,0 +1,88 @@
+{
+    "assay_id": "distribute_antisera",
+    "intent": "Distribute antisera from troughs to a 96-well plate",
+    "steps": [
+        {
+        "type": "get_tips",
+        "params": {
+            "diti_type": "FCA_DiTi_200uL",
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "aspirate_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50],
+            "labware": "Antisera_1",
+            "liquid_class": "LIQ_CLASS_ANTISERA",
+            "well_offsets": {
+            "range": {
+                "start": 0,
+                "stop": 4
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 4
+            }
+            }
+        }
+        },
+
+        {
+        "type": "aspirate_volume",
+        "params": {
+            "volumes": [0, 0, 0, 0, 50, 50, 50, 50],
+            "labware": "Antisera_2",
+            "liquid_class": "LIQ_CLASS_ANTISERA",
+            "well_offsets": {
+            "range": {
+                "start": 0,
+                "stop": 4
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 4,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate_96",
+            "liquid_class": "LIQ_CLASS_ANTISERA",
+            "well_offsets": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "drop_tips_to_location",
+        "params": {
+            "labware": "DiTi_waste"
+        }
+        }
+    ]
+}

@@ -1,0 +1,34 @@
+{
+  "assay_id": "pipetting_cycle",
+  "intent": "Minimal pipetting cycle with tip pickup, aspirate, dispense, and drop",
+  "steps": [
+    {
+      "type": "get_tips",
+      "params": {
+        "diti_type": "filtered_300uL"
+      }
+    },
+    {
+      "type": "aspirate_volume",
+      "params": {
+        "volumes": [50],
+        "labware": "plate_source",
+        "liquid_class": "standard_aqueous"
+      }
+    },
+    {
+      "type": "dispense_volume",
+      "params": {
+        "volumes": [50],
+        "labware": "plate_target",
+        "liquid_class": "standard_aqueous"
+      }
+    },
+    {
+      "type": "drop_tips_to_location",
+      "params": {
+        "labware": "waste_container"
+      }
+    }
+  ]
+}

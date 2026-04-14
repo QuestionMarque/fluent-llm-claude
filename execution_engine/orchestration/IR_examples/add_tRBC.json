@@ -1,0 +1,173 @@
+{
+    "assay_id": "Add tRBC to Plate",
+    "intent": "Add tRBC to a 96-well plate",
+    "steps": [
+        {
+        "type": "get_tips",
+        "params": {
+            "diti_type": "FCA_DiTi_1000uL",
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "mix_volume",
+        "params": {
+            "labware": "tRBC",
+            "volumes": 800,
+            "liquid_class": "Water Mix",
+            "cycles": 5,
+            "well_offsets": 0
+        }
+        },
+        {
+        "type": "empty_tips",
+        "params": {
+            "labware": "tRBC",
+            "well_offsets": null
+        }
+        },
+        {
+        "type": "aspirate_volume",
+        "params": {
+            "volumes": [600, 600, 600, 600, 600, 600, 600, 600],
+            "labware": "LABWARE_TRBC",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [0, 0, 0, 0, 0, 0, 0, 0],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [0, 1, 2, 3, 4, 5, 6, 7],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [8, 9, 10, 11, 12, 13, 14, 15],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [16, 17, 18, 19, 20, 21, 22, 23],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [24, 25, 26, 27, 28, 29, 30, 31],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [32, 33, 34, 35, 36, 37, 38, 39],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [40, 41, 42, 43, 44, 45, 46, 47],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [48, 49, 50, 51, 52, 53, 54, 55],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [56, 57, 58, 59, 60, 61, 62, 63],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [64, 65, 66, 67, 68, 69, 70, 71],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [72, 73, 74, 75, 76, 77, 78, 79],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [80, 81, 82, 83, 84, 85, 86, 87],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [50, 50, 50, 50, 50, 50, 50, 50],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_TRBC",
+            "well_offsets": [88, 89, 90, 91, 92, 93, 94, 95],
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        },
+        {
+        "type": "empty_tips",
+        "params": {
+            "labware": "LABWARE_TRBC"
+        }
+        },
+        {
+        "type": "drop_tips_to_location",
+        "params": {
+            "labware": "DITI_WASTE",
+            "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+        }
+    ]
+}

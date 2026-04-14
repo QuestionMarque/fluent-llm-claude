@@ -37,16 +37,14 @@ ExecutionLoopResult {
 }
 ```
 
-### `ir_library.py`
-Pre-defined IR entries for deterministic testing and demo runs.
+### `/ir_examples`
+Pre-defined IR examples in JSON format for deterministic testing and demo runs.
 
 **Available workflows:**
 
 | Name | Description |
 |------|-------------|
-| `simple_distribution` | Get tips → distribute → drop tips |
-| `distribution_with_incubation` | Get tips → distribute → drop tips → incubate |
-| `distribution_mix_incubate` | Get tips → distribute → mix → drop tips → incubate |
+| `pipetting_cycle` | Get tips → aspirate → dispense → drop tips |
 | `just_tips` | Pick up tips with airgap configuration |
 | `transfer_samples_plate_to_plate` | Aspirate from sample plate, dispense to dilution plate |
 | `transfer_samples_tubes_to_plate` | Aspirate from tube runner, dispense to dilution plate |
@@ -66,7 +64,7 @@ All entries are validated against `STEP_SCHEMA` in the test suite.
 ## Library Mode vs LLM Mode
 
 ### Library Mode (`ir_mode="library"`)
-- IR is loaded from `ir_library.get_ir(ir_name)`
+- IR is loaded from `IR_examples/`
 - Library IRs are authored — they must always be valid
 - If validation fails: **fail immediately** (no retries, `attempts=1`)
 - Use for production workflows and deterministic testing
@@ -106,19 +104,21 @@ from execution_engine.validation.validator_wrapper import ValidatorWrapper
 from execution_engine.planner.planner import Planner
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.orchestration.execution_loop import ExecutionLoop
+from main import FluentRuntime
+
 
 registry = load_default_registry()
 
 loop = ExecutionLoop(
     planner=Planner(registry=registry),
-    runtime_adapter=PyFluentAdapter(runtime=fluent_runtime),
+    runtime_adapter=PyFluentAdapter(runtime=FluentRuntime()),
     validator=ValidatorWrapper(registry=registry),
     ir_mode="library",
     max_retries=3,
 )
 
-result = loop.run(ir_name="distribution_mix_incubate")
+result = loop.run(ir_name="pipetting_cycle")
 print(result.success)       # True
-print(len(result.plans))    # 5
-print(result.state)         # State(tip_loaded=False, well_volumes={...})
+print(len(result.plans))    # 4
+print(result.state)         # State(tip_loaded=False, well_volumes={...}, execution_history=[...])
 ```

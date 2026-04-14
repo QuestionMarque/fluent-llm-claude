@@ -6,91 +6,139 @@ from typing import Any, Dict, List, Optional
 # Do NOT duplicate required-field logic anywhere else.
 STEP_SCHEMA: Dict[str, Dict[str, List[str]]] = {
     "reagent_distribution": {
-        "required": ["volumes", "labware_source", "labware_target"],
-        "optional": [
-            "tip_type", "DiTi_type", "diti_type",
+        "required": [
+            "labware_empty_tips",
+            "volumes",
+            "sample_count",
+            "DiTi_type",
+            "DiTi_waste",
+            "labware_source",
+            "labware_target",
             "liquid_class",
-            "selected_wells_source", "selected_wells_target",
-            "number_replicates", "sample_direction", "replicate_direction",
+            "selected_wells_source",
+            "selected_wells_target"
+        ],
+        "optional": [
+            "DynamicDiTiHandling",
+            "DynamicDiTiHandling_rule",
+            "LiquidClass_EmptyTip",
+            "max_tip_reuse",
+            "multi_dispense",
+            "sample_direction",
+            "number_replicates",
+            "replicate_direction",
+            "airgap_volume",
+            "airgap_speed",
             "tips_per_well_source",
+            "well_offset_source",
+            "tips_per_well_target",
+            "well_offset_target",
+            "tip_indices",
         ],
     },
     "sample_transfer": {
-        "required": ["volumes", "labware_source", "labware_target"],
-        "optional": [
-            "tip_type", "DiTi_type", "diti_type",
+        "required": [
+            "labware_empty_tips",
+            "volumes",
+            "sample_count",
+            "DiTi_type",
+            "DiTi_waste",
+            "labware_source",
+            "labware_target",
+            "selected_wells_source",
+            "selected_wells_target",
             "liquid_class",
-            "selected_wells_source", "selected_wells_target",
-            "number_replicates", "sample_direction", "replicate_direction",
+        ],
+        "optional": [
+            "DynamicDiTiHandling",
+            "DynamicDiTiHandling_rule",
+            "pooling",
+            "samples_per_pool",
+            "LiquidClass_EmptyTip",
+            "max_tip_reuse",
+            "multi_dispense",
+            "sample_direction",
+            "number_replicates",
+            "replicate_direction",
+            "airgap_volume",
+            "airgap_speed",
             "tips_per_well_source",
+            "well_offset_source",
+            "tips_per_well_target",
+            "well_offset_target",
+            "tip_indices",
         ],
     },
     "aspirate_volume": {
-        "required": ["volumes", "labware"],
-        "optional": [
+        "required": [
+            "volumes",
+            "labware",
             "liquid_class",
-            "well_offset", "well_offsets",
+        ],
+        "optional": [
+            "well_offsets",
+            "tip_indices",
         ],
     },
     "dispense_volume": {
-        "required": ["volumes", "labware"],
-        "optional": [
+        "required": [
+            "volumes",
+            "labware",
             "liquid_class",
-            "well_offset", "well_offsets",
+        ],
+        "optional": [
+            "well_offsets",
+            "tip_indices",
         ],
     },
     "mix_volume": {
-        "required": ["volumes", "labware"],
-        "optional": [
+        "required": [
+            "volumes",
+            "labware",
             "liquid_class",
-            "well_offset", "well_offsets",
-            "cycles",
-            "tip_indices",
         ],
-    },
-    # "mix" is an alias-style step used in some IRs. Uses volume_uL / target
-    # instead of volumes / labware. Maps to MixVolume method in the registry.
-    "mix": {
-        "required": [],
         "optional": [
-            "volumes", "volume_uL",
-            "cycles",
-            "labware", "target",
-            "liquid_class",
-            "tip_type", "DiTi_type", "diti_type",
-            "well_offsets", "well_offset",
+            "well_offsets",
             "tip_indices",
-        ],
-    },
-    "incubate": {
-        "required": ["duration_seconds"],
-        "optional": [
-            "temperature_celsius", "device",
-            # Extended aliases used in some IRs
-            "time_s", "location", "labware",
+            "cycles",
         ],
     },
     "transfer_labware": {
-        "required": ["labware_name", "target_location"],
-        "optional": ["target_position"],
+        "required": [
+            "labware_name",
+            "target_location",
+        ],
+        "optional": [
+            "target_position",
+            "only_use_selected_site",
+        ],
     },
     "get_tips": {
-        "required": ["tip_type"],
+        "required": [
+            "diti_type",
+        ],
         "optional": [
-            "DiTi_type", "diti_type",
-            "tip_indices", "airgap_volume", "airgap_speed",
+            "airgap_volume",
+            "airgap_speed",
+            "tip_indices",
         ],
     },
     "drop_tips_to_location": {
-        "required": ["labware"],
-        "optional": ["tip_indices"],
+        "required": [
+            "labware",
+        ],
+        "optional": [
+            "tip_indices",
+        ],
     },
     "empty_tips": {
-        "required": [],
+        "required": [
+            "labware",
+        ],
         "optional": [
-            "labware_empty_tips", "labware",
-            "liquid_class", "well_offsets", "well_offset",
+            "liquid_class",
             "tip_indices",
+            "well_offsets",
         ],
     },
 }

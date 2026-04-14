@@ -1,0 +1,17 @@
+{
+  "assay_id": "just_tips",
+  "intent": "Pick up tips with airgap settings",
+  "steps": [
+    {
+      "type": "get_tips",
+      "params": {
+        "diti_type": "FCA_DiTi_200uL",
+        "airgap_volume": 70,
+        "airgap_speed": 100,
+        "tip_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+      }
+    }
+  ],
+  "open_questions": [],
+  "assumptions": []
+}

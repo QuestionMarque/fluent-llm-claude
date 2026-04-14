@@ -13,8 +13,14 @@ LABWARE_FIELDS = [
     "labware_empty_tips", "labware_name", "source", "target",
 ]
 
-# Step types where unspecified tip/liquid class should produce warnings
+# Step types where unspecified tip should produce warnings
 _TIP_RELEVANT_TYPES = {
+    "reagent_distribution", "sample_transfer",
+    "get_tips",
+}
+
+# Step types where unspecified liquid class should produce warnings
+_LIQUID_RELEVANT_TYPES = {
     "reagent_distribution", "sample_transfer",
     "aspirate_volume", "dispense_volume", "mix_volume",
 }
@@ -162,16 +168,16 @@ class ValidatorWrapper:
                 context=step.id,
                 severity="warning",
             ))
-
+        
         # Warn on unspecified liquid class for liquid-handling steps
-        if step.type in _TIP_RELEVANT_TYPES and not liquid_name:
+        if step.type in _LIQUID_RELEVANT_TYPES and not liquid_name:
             feedback.warnings.append(FeedbackItem(
                 type="unspecified_liquid_class",
                 message=f"Step '{step.type}' has no liquid_class specified.",
                 suggestion="Specify a liquid_class for accurate dispensing behavior.",
                 context=step.id,
                 severity="warning",
-            ))
+            ))       
 
         # Labware existence check (warning only — labware may be runtime-defined)
         if self.registry:

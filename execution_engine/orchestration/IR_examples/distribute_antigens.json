@@ -1,0 +1,312 @@
+{
+    "assay_id": "distribute_antigens",
+    "intent": "Distribute antigens from a trough to a plate",
+    "steps": [
+        {
+        "type": "get_tips",
+        "params": {
+            "diti_type": "FCA_DiTi_1000uL",
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "aspirate_volume",
+        "params": {
+            "volumes": [300, 300, 300, 300, 300, 300, 300, 300],
+            "labware": "LABWARE_ANTIGEN_A",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": [0, 0, 0, 0, 0, 0, 0, 0],
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 8,
+                "stop": 16
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 16,
+                "stop": 24
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 24,
+                "stop": 32
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 32,
+                "stop": 40
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 40,
+                "stop": 48
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 48,
+                "stop": 56
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 56,
+                "stop": 64
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 64,
+                "stop": 72
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 72,
+                "stop": 80
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 80,
+                "stop": 88
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "dispense_volume",
+        "params": {
+            "volumes": [25, 25, 25, 25, 25, 25, 25, 25],
+            "labware": "plate",
+            "liquid_class": "LIQ_CLASS_ANTIGEN",
+            "well_offsets": {
+            "range": {
+                "start": 88,
+                "stop": 96
+            }
+            },
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "empty_tips",
+        "params": {
+            "labware": "LABWARE_ANTIGEN_A",
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        },
+
+        {
+        "type": "drop_tips_to_location",
+        "params": {
+            "labware": "DITI_WASTE",
+            "tip_indices": {
+            "range": {
+                "start": 0,
+                "stop": 8
+            }
+            }
+        }
+        }
+    ]
+}
