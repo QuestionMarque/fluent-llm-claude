@@ -104,19 +104,21 @@ from execution_engine.validation.validator_wrapper import ValidatorWrapper
 from execution_engine.planner.planner import Planner
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.orchestration.execution_loop import ExecutionLoop
+from main import FluentRuntime
+
 
 registry = load_default_registry()
 
 loop = ExecutionLoop(
     planner=Planner(registry=registry),
-    runtime_adapter=PyFluentAdapter(runtime=fluent_runtime),
+    runtime_adapter=PyFluentAdapter(runtime=FluentRuntime()),
     validator=ValidatorWrapper(registry=registry),
     ir_mode="library",
     max_retries=3,
 )
 
 result = loop.run(ir_name="pipetting_cycle")
-print(result.success)       # 
-print(len(result.plans))    #
-print(result.state)         # 
+print(result.success)       # True
+print(len(result.plans))    # 4
+print(result.state)         # State(tip_loaded=False, well_volumes={...}, execution_history=[...])
 ```
