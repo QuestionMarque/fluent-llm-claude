@@ -38,7 +38,10 @@ class WorkflowDecomposer:
 
         for idx, raw in enumerate(raw_steps):
             step_type = raw.get("type", "unknown")
-            params = {k: v for k, v in raw.items() if k not in ("type", "id")}
+            if "params" in raw:
+                params = raw["params"]
+            else:
+                params = {k: v for k, v in raw.items() if k not in ("type", "id")}
             step_id = raw.get("id") or f"{step_type}_{idx}"
             step = Step(type=step_type, params=params, id=step_id)
 
