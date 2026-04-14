@@ -77,7 +77,7 @@ from execution_engine.workflow.state_manager import StateManager
 decomposer = WorkflowDecomposer()
 ir = {
     "steps": [
-        {"id": "step_0", "type": "get_tips", "tip_type": "DiTi_200uL"},
+        {"id": "step_0", "type": "get_tips", "params": {"diti_type": "DiTi_200uL"}},
     ]
 }
 
