@@ -60,7 +60,7 @@ WorkflowDecomposer.decompose(ir)
   ↓
 Workflow(steps=[step_0, step_1, ...], metadata={...})
   ↓
-ValidatorWrapper → StepMapper → Adapter (in order)
+ValidatorWrapper → RuntimeCall.from_step → Adapter (in order)
 ```
 
 Future branching/loop support adds to this package —

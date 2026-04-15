@@ -1,8 +1,14 @@
 import pytest
+from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.models.workflow import Step, Workflow, STEP_SCHEMA
 from execution_engine.models.runtime_call import RuntimeCall
 from execution_engine.models.state import State
 from execution_engine.models.feedback import FeedbackItem, ValidationFeedback
+
+
+@pytest.fixture
+def registry():
+    return load_default_registry()
 
 
 class TestStepSchema:
@@ -71,6 +77,87 @@ class TestRuntimeCall:
         )
         assert call.variables["volumes"] == [100]
         assert call.step_id == "s0"
+
+
+class TestRuntimeCallFromStep:
+    def test_reagent_distribution_uses_registry_method(self, registry):
+        step = Step(type="reagent_distribution", params={
+            "volumes": [100],
+            "labware_source": "Reagent_Trough_100mL",
+            "labware_target": "Plate_96_Well",
+            "tip_type": "DiTi_200uL",
+            "liquid_class": "Buffer",
+        })
+        call = RuntimeCall.from_step(step, registry)
+        assert call.method_name == "ReagentDistribution"
+        assert call.variables["tip_type"] == "DiTi_200uL"
+        assert call.variables["labware_source"] == "Reagent_Trough_100mL"
+
+    def test_get_tips_propagates_step_id(self, registry):
+        step = Step(type="get_tips", params={"tip_type": "DiTi_200uL"}, id="s0")
+        call = RuntimeCall.from_step(step, registry)
+        assert call.method_name == "GetTips"
+        assert call.step_id == "s0"
+
+    def test_transfer_labware(self, registry):
+        step = Step(type="transfer_labware", params={
+            "labware_name": "Plate_96_Well",
+            "target_location": "Slot_3",
+        })
+        call = RuntimeCall.from_step(step, registry)
+        assert call.method_name == "TransferLabware"
+
+    def test_unknown_step_type_raises(self, registry):
+        step = Step(type="teleport_sample", params={})
+        with pytest.raises(ValueError):
+            RuntimeCall.from_step(step, registry)
+
+    # --- Variable-mapping behavior ---
+
+    def test_distribution_normalizes_diti_alias(self, registry):
+        step = Step(type="reagent_distribution", params={
+            "volumes": [100],
+            "DiTi_type": "DiTi_200uL",
+            "liquid_class": "Buffer",
+            "labware_source": "Reagent_Trough_100mL",
+            "labware_target": "Plate_96_Well",
+        })
+        call = RuntimeCall.from_step(step, registry)
+        assert call.variables["tip_type"] == "DiTi_200uL"
+        assert "DiTi_type" not in call.variables
+
+    def test_mix_volume_includes_cycles(self, registry):
+        step = Step(type="mix_volume", params={
+            "volumes": [80], "labware": "Plate_96_Well", "cycles": 5,
+        })
+        call = RuntimeCall.from_step(step, registry)
+        assert call.variables["cycles"] == 5
+
+    def test_mix_volume_without_cycles_omits_key(self, registry):
+        step = Step(type="mix_volume", params={"volumes": [80], "labware": "Plate_96_Well"})
+        call = RuntimeCall.from_step(step, registry)
+        assert "cycles" not in call.variables
+
+    def test_get_tips_normalizes_diti_type(self, registry):
+        step = Step(type="get_tips", params={"diti_type": "DiTi_1000uL"})
+        call = RuntimeCall.from_step(step, registry)
+        assert call.variables["tip_type"] == "DiTi_1000uL"
+
+    def test_none_values_are_filtered(self, registry):
+        step = Step(type="get_tips", params={
+            "tip_type": "DiTi_200uL",
+            "airgap_volume": None,
+        })
+        call = RuntimeCall.from_step(step, registry)
+        assert "airgap_volume" not in call.variables
+
+    def test_well_offset_alias_normalized(self, registry):
+        step = Step(type="aspirate_volume", params={
+            "volumes": [50], "labware": "Plate_96_Well", "well_offset": "A1",
+            "liquid_class": "Water",
+        })
+        call = RuntimeCall.from_step(step, registry)
+        assert call.variables.get("well_offsets") == "A1"
 
 
 class TestWorkflow:

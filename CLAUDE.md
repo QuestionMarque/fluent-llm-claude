@@ -20,7 +20,8 @@ GitHub repo: https://github.com/QuestionMarque/fluent-llm-claude (branch: main)
 - **Step** — a single typed operation (e.g. `reagent_distribution`, `get_tips`).
 - **Workflow** — an ordered list of Steps.
 - **RuntimeCall** — the `(method_name, variables)` pair a validated Step is
-  mapped to. Produced by `StepMapper`; consumed by the runtime adapter.
+  converted to. Produced by `RuntimeCall.from_step(step, registry)`;
+  consumed by the runtime adapter.
 
 ---
 
@@ -39,8 +40,8 @@ IFU text  ──or──  IR library name
    [ validation/ ]   ValidatorWrapper.validate_workflow()  →  ValidationFeedback
         │
         ▼
-   [ mapper/ ]       StepMapper.map(step)                 →  RuntimeCall
-        │                (1:1 lookup — no scoring, no selection)
+   [ models/ ]       RuntimeCall.from_step(step, registry) →  RuntimeCall
+        │                (1:1 registry lookup + variable translation)
         ▼
    [ runtime/ ]      PyFluentAdapter.execute(method_name, variables)
         │
@@ -52,9 +53,10 @@ All lookups are grounded in `capability_registry/data/registry.yaml`.
 No hardcoded method/tip/liquid knowledge anywhere else.
 
 Because the registry guarantees exactly one method per step type, the
-mapping stage is purely mechanical — there is no planner, no candidate
-selection, and no scoring. Validation is the last decision point; once
-it passes, the workflow can be executed directly.
+step-to-call conversion is purely mechanical — no planner, no mapper
+package, no candidate selection, no scoring. Validation is the last
+decision point; once it passes, each step is converted to a
+`RuntimeCall` directly and executed.
 
 ---
 
@@ -92,10 +94,9 @@ Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
 
 | Package | Role |
 |---------|------|
-| `models/` | `Step`, `Workflow`, `RuntimeCall`, `State`, `ValidationFeedback`; `STEP_SCHEMA` |
-| `capability_registry/` | `registry.yaml` loader; typed frozen dataclasses |
+| `models/` | `Step`, `Workflow`, `RuntimeCall` (incl. `from_step` + variable mapping), `State`, `ValidationFeedback`; `STEP_SCHEMA` |
+| `capability_registry/` | `registry.yaml` loader (with load-time validation); typed frozen dataclasses |
 | `validation/` | Schema + semantic validation; LLM retry prompt builder |
-| `mapper/` | `StepMapper` (1:1 step→method lookup) + `VariableMapper` |
 | `runtime/` | `PyFluentAdapter`; strict variable validation |
 | `workflow/` | `WorkflowDecomposer`; `StateManager`; `DependencyResolver` hook |
 | `orchestration/` | `ExecutionLoop`; `IR_examples/` (JSON IRs) |
@@ -126,23 +127,24 @@ Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
 
 ---
 
-## Mapping rules
+## Step → RuntimeCall conversion
 
-- `StepMapper` looks up the one method that supports a step type via
-  `registry.methods_supporting(step.type)`. The 1:1 invariant
-  (exactly one method per step type) is enforced at registry load
-  time by `RegistryValidator` — `load_registry()` raises
-  `RegistryLoadError` if any step type has zero or multiple supporting
-  methods, so the mapper trusts the result unconditionally.
-- `VariableMapper` translates `step.params` into the runtime variable dict:
+`RuntimeCall.from_step(step, registry)` (in `models/runtime_call.py`):
+
+- Looks up the one method that supports `step.type` via
+  `registry.methods_supporting(step.type)`. The 1:1 invariant is
+  enforced at registry load time, so the lookup is unconditional.
+- Translates `step.params` into the method's runtime variable dict:
   - normalizes aliases (`DiTi_type` / `diti_type` → `tip_type`,
     `well_offset` → `well_offsets`)
   - drops `None` values (runtime adapter is strict)
   - handles per-step-family field sets (distribution vs liquid op vs
     labware transfer vs tip ops)
+- Raises `ValueError` if the step type is unknown — defensive guard
+  for callers that bypass validation.
 
 If a future step type ever needs multiple implementations, reintroduce
-a planning/selection layer at that point — not prophylactically.
+a selection layer at that point — not prophylactically.
 
 ---
 
@@ -159,8 +161,9 @@ Warnings (returned via `RegistryValidator().validate(registry)`,
 not raised): methods/compatibility matrix referencing unknown tips or
 liquid classes.
 
-This collapses what would otherwise be N per-step `MapperError`
-failures into one clear startup failure.
+This collapses what would otherwise be N per-step failures (and a
+broken `RuntimeCall.from_step` invariant) into one clear startup
+failure.
 
 ---
 
@@ -170,14 +173,13 @@ failures into one clear startup failure.
 tests/unit/
   test_models.py
   test_validation.py
-  test_mapper.py
   test_capability_registry.py
   test_runtime.py
   test_orchestration.py
 ```
 
 Run with: `python3 -m pytest tests/ -q`
-Current count: 83 tests, all passing.
+Current count: 80 tests, all passing.
 
 ---
 

@@ -10,7 +10,6 @@ load_dotenv()
 
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.validation.validator_wrapper import ValidatorWrapper
-from execution_engine.mapper.step_mapper import StepMapper
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.orchestration.execution_loop import ExecutionLoop
 from execution_engine.workflow.decomposer import WorkflowDecomposer
@@ -63,14 +62,13 @@ def main():
 
     # 2. Instantiate components
     validator = ValidatorWrapper(registry=registry)
-    mapper = StepMapper(registry=registry)
     fluent_runtime = FluentRuntime()
     adapter = PyFluentAdapter(runtime=fluent_runtime, strict=True)
     decomposer = WorkflowDecomposer()
 
     # 3. Configure execution loop in library mode
     loop = ExecutionLoop(
-        mapper=mapper,
+        registry=registry,
         runtime_adapter=adapter,
         validator=validator,
         decomposer=decomposer,

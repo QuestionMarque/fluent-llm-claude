@@ -11,7 +11,7 @@ from ..workflow.decomposer import WorkflowDecomposer
 from ..workflow.state_manager import StateManager
 from ..validation.validator_wrapper import ValidatorWrapper
 from ..validation.feedback_builder import FeedbackBuilder
-from ..mapper.step_mapper import StepMapper
+from ..capability_registry.registry import CapabilityRegistry
 from ..runtime.pyfluent_adapter import PyFluentAdapter
 
 
@@ -43,13 +43,14 @@ class ExecutionLoop:
       the validation feedback and loop until valid or max_retries is hit.
 
     Because every step type maps to exactly one method in the registry, no
-    planning is required — once validation passes, each step is mapped
-    directly to a RuntimeCall and executed.
+    planning is required — once validation passes, each step is converted
+    directly into a RuntimeCall (`RuntimeCall.from_step(step, registry)`)
+    and executed.
     """
 
     def __init__(
         self,
-        mapper: StepMapper,
+        registry: CapabilityRegistry,
         runtime_adapter: PyFluentAdapter,
         validator: ValidatorWrapper,
         decomposer: Optional[WorkflowDecomposer] = None,
@@ -57,7 +58,7 @@ class ExecutionLoop:
         ir_mode: str = "library",
         max_retries: int = 3,
     ):
-        self.mapper = mapper
+        self.registry = registry
         self.runtime_adapter = runtime_adapter
         self.validator = validator
         self.decomposer = decomposer or WorkflowDecomposer()
@@ -143,17 +144,17 @@ class ExecutionLoop:
                     "step_type": step.type,
                 }
 
-                # Map step to a concrete runtime call
+                # Build a concrete runtime call directly from the step
                 try:
-                    call = self.mapper.map(step)
+                    call = RuntimeCall.from_step(step, self.registry)
                     runtime_calls.append(call)
                     log_entry["method_name"] = call.method_name
                     log_entry["variables"] = call.variables
-                    print(f"  [Map] {step.id} → {call.method_name}")
+                    print(f"  [Build] {step.id} → {call.method_name}")
                 except Exception as e:
-                    log_entry["error"] = f"Mapping failed: {e}"
+                    log_entry["error"] = f"Building runtime call failed: {e}"
                     execution_log.append(log_entry)
-                    print(f"  [Map ERROR] {step.id}: {e}")
+                    print(f"  [Build ERROR] {step.id}: {e}")
                     had_error = True
                     continue
 

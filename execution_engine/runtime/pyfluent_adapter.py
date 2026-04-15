@@ -17,7 +17,7 @@ class ExecutionResult:
 
 
 class PyFluentAdapter:
-    """Execution bridge between mapper output and the Fluent hardware runtime.
+    """Execution bridge between RuntimeCall variables and the Fluent hardware runtime.
 
     Two execution paths:
     1. method_manager path: calls method_manager.run_method(name, variables)

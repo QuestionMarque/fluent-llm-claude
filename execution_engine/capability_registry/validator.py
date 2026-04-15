@@ -10,7 +10,7 @@ CapabilityRegistry, such as:
 The first class produces warnings (the registry is usable but its
 metadata is suspect). The latter two produce errors and cause
 `load_registry()` to refuse the registry — they make the 1:1
-step→method invariant that `mapper.StepMapper` relies on impossible
+step→method invariant that `RuntimeCall.from_step` relies on impossible
 to satisfy.
 """
 from collections import defaultdict
@@ -74,9 +74,9 @@ class RegistryValidator:
                     ))
 
         # --- Step-type → method invariant (errors) ---
-        # The mapper relies on exactly one method per step type. Catching
-        # violations here turns a per-step runtime failure into a single
-        # load-time failure with a clear diagnostic.
+        # RuntimeCall.from_step relies on exactly one method per step type.
+        # Catching violations here turns a per-step runtime failure into a
+        # single load-time failure with a clear diagnostic.
 
         supporters = defaultdict(list)
         for method_name, method in registry.methods.items():
@@ -91,7 +91,7 @@ class RegistryValidator:
                     message=(
                         f"Step type '{step_type}' is supported by {len(names)} methods "
                         f"({', '.join(names)}). Each step type must be supported by "
-                        "exactly one method (the mapper has no selection logic)."
+                        "exactly one method (RuntimeCall.from_step has no selection logic)."
                     ),
                     context=step_type,
                 ))

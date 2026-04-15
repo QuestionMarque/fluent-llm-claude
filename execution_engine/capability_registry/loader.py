@@ -18,8 +18,9 @@ class RegistryLoadError(Exception):
     Indicates a code/config bug — either the YAML is internally
     inconsistent (e.g. two methods claim the same step type) or it
     fails to cover every step type declared in STEP_SCHEMA. Both
-    conditions break the 1:1 step→method invariant the mapper
-    depends on, so the loader refuses to return the broken registry.
+    conditions break the 1:1 step→method invariant
+    `RuntimeCall.from_step` depends on, so the loader refuses to
+    return the broken registry.
     """
 
 

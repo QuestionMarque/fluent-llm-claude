@@ -1,9 +1,11 @@
 # validation/
 
-Safety and correctness layer. Sits between workflow decomposition and mapping.
-No invalid input ever reaches the mapper or runtime. Because mapping is
-a 1:1 registry lookup, validation is the last decision point — once it
-passes, the workflow can be executed directly.
+Safety and correctness layer. Sits between workflow decomposition and
+runtime-call construction. No invalid input ever reaches
+`RuntimeCall.from_step` or the runtime adapter. Because step→method
+lookup is a 1:1 registry hit, validation is the last decision point —
+once it passes, each step is converted to a `RuntimeCall` and executed
+directly.
 
 ---
 

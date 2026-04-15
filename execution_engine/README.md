@@ -31,9 +31,9 @@ IFU text  ──or──  IR library name
         │
         ▼  (valid)
    for each step:
-   [ mapper/ ]
-   StepMapper.map(step)  →  RuntimeCall { method_name, variables }
-        │   (1:1 step→method lookup; no scoring or selection)
+   [ models/ ]
+   RuntimeCall.from_step(step, registry)  →  RuntimeCall { method_name, variables }
+        │   (1:1 registry lookup + variable translation; no scoring or selection)
         ▼
    [ runtime/ ]
    PyFluentAdapter.execute(method_name, variables)  →  ExecutionResult
@@ -47,7 +47,8 @@ IFU text  ──or──  IR library name
 ```
 
 All lookups are grounded in `capability_registry/` — no hardcoded
-method/tip/liquid knowledge anywhere in the mapping or validation layers.
+method/tip/liquid knowledge anywhere in the validation or runtime-call
+construction.
 
 ---
 
@@ -55,10 +56,9 @@ method/tip/liquid knowledge anywhere in the mapping or validation layers.
 
 | Package | Role |
 |---------|------|
-| `models/` | Core data contracts (Step, Workflow, RuntimeCall, State, Feedback) |
-| `capability_registry/` | Registry of methods, tips, liquid classes, labware |
+| `models/` | Core data contracts (Step, Workflow, RuntimeCall + variable mapping, State, Feedback) |
+| `capability_registry/` | Registry of methods, tips, liquid classes, labware; load-time validator |
 | `validation/` | Schema + semantic validation; LLM retry prompt builder |
-| `mapper/` | StepMapper (1:1 step→method) + VariableMapper |
 | `runtime/` | PyFluentAdapter; strict variable validation; hardware bridge |
 | `workflow/` | IR → Workflow decomposer; StateManager; DependencyResolver hook |
 | `orchestration/` | ExecutionLoop; `IR_examples/` JSON files; library/LLM mode control |
@@ -86,14 +86,13 @@ method/tip/liquid knowledge anywhere in the mapping or validation layers.
 ```python
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.validation.validator_wrapper import ValidatorWrapper
-from execution_engine.mapper.step_mapper import StepMapper
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.orchestration.execution_loop import ExecutionLoop
 
 registry = load_default_registry()
 
 loop = ExecutionLoop(
-    mapper=StepMapper(registry=registry),
+    registry=registry,
     runtime_adapter=PyFluentAdapter(runtime=your_fluent_runtime),
     validator=ValidatorWrapper(registry=registry),
     ir_mode="library",
@@ -117,7 +116,7 @@ The system is designed for clean extension without modifying existing code:
 | Custom step decomposer | `@register_decomposer` in `workflow/decomposer.py` |
 | New LLM provider | `LLMClient._call_provider()` in `llm/llm_client.py` |
 | Dependency-based ordering | `workflow/dependency_resolver.py` |
-| New variable mapping | `mapper/variable_mapper.py` (per-step-family methods) |
-| Multiple methods per step type | Add planning/selection back; update `StepMapper` |
+| New variable mapping | `_map_*` helpers in `models/runtime_call.py` |
+| Multiple methods per step type | Reintroduce a selection layer; update `RuntimeCall.from_step` |
 | Richer state tracking | `models/state.py` + `workflow/state_manager.py` |
 | Multi-instrument support | New adapter alongside `runtime/pyfluent_adapter.py` |

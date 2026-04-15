@@ -41,7 +41,8 @@ class Workflow:
 ```
 
 ### `runtime_call.py`
-Defines `RuntimeCall` — the output of the mapper for a single step.
+Defines `RuntimeCall` and the `from_step` classmethod that builds one
+from a validated `Step`.
 
 ```python
 @dataclass
@@ -49,11 +50,24 @@ class RuntimeCall:
     method_name: str          # FluentControl method to invoke
     variables: Dict[str, Any] # runtime variable key-value pairs
     step_id: Optional[str]    # mirrors originating Step.id
+
+    @classmethod
+    def from_step(cls, step, registry) -> "RuntimeCall": ...
 ```
 
-Because every step type maps to exactly one method, there are no
-selection or scoring fields — `RuntimeCall` is a direct translation of
-a validated `Step` into what the runtime adapter needs.
+Because every step type maps to exactly one method (enforced by
+`RegistryValidator` at load time), `from_step` is a 1:1 lookup —
+no selection or scoring. The same module also holds the variable-
+translation helpers (`_map_distribution`, `_map_liquid_operation`, ...)
+that:
+
+- normalize aliases (`DiTi_type` / `diti_type` → `tip_type`,
+  `well_offset` → `well_offsets`)
+- filter out IR fields that are not runtime variables
+- drop `None` values (the runtime adapter is strict)
+
+Raises `ValueError` if the step type is not supported by any registered
+method — defensive guard for callers that bypass validation.
 
 ### `state.py`
 Defines `State` — lightweight mutable execution state.
@@ -96,14 +110,14 @@ class ValidationFeedback:
 ## Role in the Architecture
 
 ```
-STEP_SCHEMA  ──► validation/ (schema checks)
-              ──► mapper/     (variable mapping)
-Step/Workflow ──► workflow/   (decomposition)
-              ──► validation/ (input to validator)
-              ──► mapper/     (input to step mapper)
-RuntimeCall  ──► runtime/    (method + variables to execute)
-State        ──► orchestration/ (state tracking)
-Feedback     ──► orchestration/ (retry loop decisions)
+STEP_SCHEMA   ──► validation/             (schema checks)
+              ──► capability_registry/    (load-time coverage check)
+Step/Workflow ──► workflow/               (decomposition)
+              ──► validation/             (input to validator)
+              ──► RuntimeCall.from_step   (constructed into a runtime call)
+RuntimeCall   ──► runtime/                (method + variables to execute)
+State         ──► orchestration/          (state tracking)
+Feedback      ──► orchestration/          (retry loop decisions)
 ```
 
 Models are **pure data** — no business logic, no side effects.

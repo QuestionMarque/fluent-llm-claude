@@ -57,7 +57,7 @@ registries). Warnings are not raised — fetch them with
 - a step type is supported by more than one method (ambiguous mapping)
 - a step type in `STEP_SCHEMA` has no supporting method (incomplete coverage)
 
-Both break the 1:1 step→method invariant that `mapper.StepMapper`
+Both break the 1:1 step→method invariant that `RuntimeCall.from_step`
 relies on, so the loader refuses the registry rather than letting the
 problem surface later as a per-step failure.
 
@@ -84,13 +84,13 @@ The authoritative configuration file. Contains:
 ## Architecture Note
 
 The registry is **read-only at runtime**. Load it once at startup and
-pass the same instance to `ValidatorWrapper` and `StepMapper`.
-Never reload it per-step.
+pass the same instance to `ValidatorWrapper`, `ExecutionLoop`, and any
+caller of `RuntimeCall.from_step`. Never reload it per-step.
 
 **Mapping invariant:** each step type must be supported by exactly one
 method. `RegistryValidator` enforces this at load time — broken
-registries cannot be returned to callers, so the mapper can do its
-1:1 step→method lookup unconditionally.
+registries cannot be returned to callers, so `RuntimeCall.from_step`
+can do its 1:1 step→method lookup unconditionally.
 
 ---
 

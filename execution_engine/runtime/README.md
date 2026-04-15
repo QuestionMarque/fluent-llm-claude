@@ -1,8 +1,8 @@
 # runtime/
 
-Execution bridge between mapper output and the Fluent hardware runtime.
-The only package that touches FluentControl — all other packages are
-hardware-agnostic.
+Execution bridge between `RuntimeCall` variables and the Fluent hardware
+runtime. The only package that touches FluentControl — all other
+packages are hardware-agnostic.
 
 ---
 
@@ -65,10 +65,11 @@ class ExecutionResult:
     error: Optional[str]       # set on failure
 ```
 
-Strict mode exists because `mapper.VariableMapper` guarantees no None
-values in its output. If a None ever reaches the adapter, something
-upstream went wrong — strict mode surfaces it immediately rather than
-silently passing garbage to the instrument.
+Strict mode exists because the variable-mapping helpers in
+`models/runtime_call.py` guarantee no None values in `RuntimeCall.variables`.
+If a None ever reaches the adapter, something upstream went wrong —
+strict mode surfaces it immediately rather than silently passing garbage
+to the instrument.
 
 ---
 

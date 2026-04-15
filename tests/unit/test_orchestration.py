@@ -6,7 +6,6 @@ import pytest
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.models.workflow import STEP_SCHEMA, Workflow
 from execution_engine.orchestration.execution_loop import ExecutionLoop, ExecutionLoopResult
-from execution_engine.mapper.step_mapper import StepMapper
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.validation.validator_wrapper import ValidatorWrapper
 from execution_engine.workflow.decomposer import WorkflowDecomposer
@@ -39,7 +38,7 @@ class MockRuntime:
 def loop():
     registry = load_default_registry()
     return ExecutionLoop(
-        mapper=StepMapper(registry=registry),
+        registry=registry,
         runtime_adapter=PyFluentAdapter(runtime=MockRuntime()),
         validator=ValidatorWrapper(registry=registry),
         ir_mode="library",

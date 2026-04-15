@@ -25,7 +25,7 @@ ValidatorWrapper.validate_workflow(workflow)  → ValidationFeedback
     ↓
   [valid]
 for each step:
-    StepMapper.map(step)           → RuntimeCall (1:1 lookup)
+    RuntimeCall.from_step(step, registry) → RuntimeCall (1:1 lookup)
     PyFluentAdapter.execute(...)   → ExecutionResult
     StateManager.update(step, ok)  → mutate State
     append execution_log entry
@@ -101,7 +101,6 @@ class ExecutionLoopResult:
 ```python
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.validation.validator_wrapper import ValidatorWrapper
-from execution_engine.mapper.step_mapper import StepMapper
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.orchestration.execution_loop import ExecutionLoop
 from main import FluentRuntime
@@ -110,7 +109,7 @@ from main import FluentRuntime
 registry = load_default_registry()
 
 loop = ExecutionLoop(
-    mapper=StepMapper(registry=registry),
+    registry=registry,
     runtime_adapter=PyFluentAdapter(runtime=FluentRuntime()),
     validator=ValidatorWrapper(registry=registry),
     ir_mode="library",
