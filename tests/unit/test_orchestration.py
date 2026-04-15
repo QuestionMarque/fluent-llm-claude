@@ -6,7 +6,7 @@ import pytest
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.models.workflow import STEP_SCHEMA, Workflow
 from execution_engine.orchestration.execution_loop import ExecutionLoop, ExecutionLoopResult
-from execution_engine.planner.planner import Planner
+from execution_engine.mapper.step_mapper import StepMapper
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.validation.validator_wrapper import ValidatorWrapper
 from execution_engine.workflow.decomposer import WorkflowDecomposer
@@ -39,7 +39,7 @@ class MockRuntime:
 def loop():
     registry = load_default_registry()
     return ExecutionLoop(
-        planner=Planner(registry=registry),
+        mapper=StepMapper(registry=registry),
         runtime_adapter=PyFluentAdapter(runtime=MockRuntime()),
         validator=ValidatorWrapper(registry=registry),
         ir_mode="library",
@@ -120,9 +120,9 @@ class TestExecutionLoop:
         assert not result.success
         assert result.error is not None
 
-    def test_result_contains_plans_and_log(self, loop):
+    def test_result_contains_runtime_calls_and_log(self, loop):
         result = loop.run(ir_name="pipetting_cycle")
-        assert len(result.plans) > 0
+        assert len(result.runtime_calls) > 0
         assert len(result.execution_log) > 0
 
     def test_result_contains_state(self, loop):

@@ -27,15 +27,16 @@ def _set_if(target: Dict[str, Any], key: str, value: Any) -> None:
 
 
 class VariableMapper:
-    """Maps Step params to a runtime variable dict for a specific method.
+    """Translates Step params into a runtime variable dict.
 
     Step-type-aware: each step family has its own mapping logic.
-    Normalizes parameter aliases (e.g. DiTi_type -> tip_type).
-    Only returns non-None values — the runtime adapter enforces strictness.
+    Normalizes parameter aliases (e.g. DiTi_type -> tip_type,
+    well_offset -> well_offsets). Only returns non-None values —
+    the runtime adapter enforces strictness.
     """
 
-    def map(self, step: Step, method_name: str) -> Dict[str, Any]:
-        """Return runtime variables for the given step and method."""
+    def map(self, step: Step) -> Dict[str, Any]:
+        """Return runtime variables for the given step."""
         params = step.params
         step_type = step.type
 
@@ -44,11 +45,6 @@ class VariableMapper:
 
         if step_type in ("aspirate_volume", "dispense_volume", "mix_volume"):
             return self._map_liquid_operation(params, step_type)
-
-        # "mix" is an extended alias for mix_volume used in some IRs.
-        # It accepts volume_uL and target in addition to the standard fields.
-        if step_type == "mix":
-            return self._map_mix(params)
 
         if step_type == "transfer_labware":
             return self._map_transfer_labware(params)
@@ -61,9 +57,6 @@ class VariableMapper:
 
         if step_type == "empty_tips":
             return self._map_empty_tips(params)
-
-        if step_type == "incubate":
-            return self._map_incubate(params)
 
         # Fallback: pass through all non-None params as-is
         return {k: v for k, v in params.items() if v is not None}
@@ -98,19 +91,6 @@ class VariableMapper:
             _set_if(result, "cycles", params.get("cycles"))
         return result
 
-    def _map_mix(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle the 'mix' step type (alias for mix_volume with extended field names)."""
-        result: Dict[str, Any] = {}
-        _set_if(result, "volumes", params.get("volumes") or params.get("volume_uL"))
-        # Accept both labware and target as the labware identifier
-        _set_if(result, "labware", params.get("labware") or params.get("target"))
-        _set_if(result, "liquid_class", params.get("liquid_class"))
-        _set_if(result, "tip_type", _resolve_tip_type(params))
-        _set_if(result, "cycles", params.get("cycles"))
-        _set_if(result, "well_offsets", _resolve_well_offsets(params))
-        _set_if(result, "tip_indices", params.get("tip_indices"))
-        return result
-
     def _map_transfer_labware(self, params: Dict[str, Any]) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
         _set_if(result, "labware_name", params.get("labware_name"))
@@ -140,14 +120,4 @@ class VariableMapper:
         _set_if(result, "liquid_class", params.get("liquid_class"))
         _set_if(result, "well_offsets", _resolve_well_offsets(params))
         _set_if(result, "tip_indices", params.get("tip_indices"))
-        return result
-
-    def _map_incubate(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        result: Dict[str, Any] = {}
-        # Accept both duration_seconds and time_s
-        _set_if(result, "duration_seconds", params.get("duration_seconds") or params.get("time_s"))
-        _set_if(result, "temperature_celsius", params.get("temperature_celsius"))
-        # Accept both device and location
-        _set_if(result, "device", params.get("device") or params.get("location"))
-        _set_if(result, "labware", params.get("labware"))
         return result

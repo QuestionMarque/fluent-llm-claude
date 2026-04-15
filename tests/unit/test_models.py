@@ -1,6 +1,6 @@
 import pytest
 from execution_engine.models.workflow import Step, Workflow, STEP_SCHEMA
-from execution_engine.models.plan import Plan
+from execution_engine.models.runtime_call import RuntimeCall
 from execution_engine.models.state import State
 from execution_engine.models.feedback import FeedbackItem, ValidationFeedback
 
@@ -54,6 +54,23 @@ class TestStep:
         step = Step(type="get_tips", params={"diti_type": "DiTi_200uL"}, id="step_0")
         assert step.params["diti_type"] == "DiTi_200uL"
         assert step.id == "step_0"
+
+
+class TestRuntimeCall:
+    def test_defaults(self):
+        call = RuntimeCall(method_name="GetTips")
+        assert call.method_name == "GetTips"
+        assert call.variables == {}
+        assert call.step_id is None
+
+    def test_with_variables_and_step_id(self):
+        call = RuntimeCall(
+            method_name="ReagentDistribution",
+            variables={"volumes": [100]},
+            step_id="s0",
+        )
+        assert call.variables["volumes"] == [100]
+        assert call.step_id == "s0"
 
 
 class TestWorkflow:

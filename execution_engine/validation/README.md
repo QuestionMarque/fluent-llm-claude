@@ -1,7 +1,9 @@
 # validation/
 
-Safety and correctness layer. Sits between workflow decomposition and planning.
-No invalid input ever reaches the planner or runtime.
+Safety and correctness layer. Sits between workflow decomposition and mapping.
+No invalid input ever reaches the mapper or runtime. Because mapping is
+a 1:1 registry lookup, validation is the last decision point — once it
+passes, the workflow can be executed directly.
 
 ---
 

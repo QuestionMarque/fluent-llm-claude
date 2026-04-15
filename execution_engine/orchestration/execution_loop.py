@@ -4,14 +4,14 @@ import json
 from pathlib import Path
 
 from ..models.workflow import Workflow
-from ..models.plan import Plan
+from ..models.runtime_call import RuntimeCall
 from ..models.state import State
 from ..models.feedback import ValidationFeedback
 from ..workflow.decomposer import WorkflowDecomposer
 from ..workflow.state_manager import StateManager
 from ..validation.validator_wrapper import ValidatorWrapper
 from ..validation.feedback_builder import FeedbackBuilder
-from ..planner.planner import Planner
+from ..mapper.step_mapper import StepMapper
 from ..runtime.pyfluent_adapter import PyFluentAdapter
 
 
@@ -21,7 +21,7 @@ class ExecutionLoopResult:
     success: bool
     attempts: int
     workflow: Optional[Workflow] = None
-    plans: List[Plan] = field(default_factory=list)
+    runtime_calls: List[RuntimeCall] = field(default_factory=list)
     execution_log: List[Dict[str, Any]] = field(default_factory=list)
     error: Optional[str] = None
     retry_prompt: Optional[str] = None
@@ -33,7 +33,7 @@ class ExecutionLoop:
     """Control tower — coordinates end-to-end workflow execution.
 
     Modes:
-    - ir_mode="library": load IR from ir_library (fail-fast on validation errors)
+    - ir_mode="library": load IR from IR_examples/ (fail-fast on validation errors)
     - ir_mode="llm":     generate IR via LLM, retry with corrective prompt on failure
 
     The difference in error handling between modes is intentional:
@@ -41,11 +41,15 @@ class ExecutionLoop:
       is a code bug, not a runtime condition — fail immediately without retrying.
     - LLM mode: the model output may be imperfect. Build a retry prompt from
       the validation feedback and loop until valid or max_retries is hit.
+
+    Because every step type maps to exactly one method in the registry, no
+    planning is required — once validation passes, each step is mapped
+    directly to a RuntimeCall and executed.
     """
 
     def __init__(
         self,
-        planner: Planner,
+        mapper: StepMapper,
         runtime_adapter: PyFluentAdapter,
         validator: ValidatorWrapper,
         decomposer: Optional[WorkflowDecomposer] = None,
@@ -53,7 +57,7 @@ class ExecutionLoop:
         ir_mode: str = "library",
         max_retries: int = 3,
     ):
-        self.planner = planner
+        self.mapper = mapper
         self.runtime_adapter = runtime_adapter
         self.validator = validator
         self.decomposer = decomposer or WorkflowDecomposer()
@@ -127,8 +131,8 @@ class ExecutionLoop:
                     print("[ExecutionLoop] Validation failed — retrying with corrective prompt...")
                     continue
 
-            # Step 3: Plan → Execute → State update for each step
-            plans: List[Plan] = []
+            # Step 3: Map → Execute → State update for each step
+            runtime_calls: List[RuntimeCall] = []
             execution_log: List[Dict[str, Any]] = []
             state_manager = StateManager()
             had_error = False
@@ -139,23 +143,22 @@ class ExecutionLoop:
                     "step_type": step.type,
                 }
 
-                # Plan
+                # Map step to a concrete runtime call
                 try:
-                    plan = self.planner.plan(step)
-                    plans.append(plan)
-                    log_entry["method_name"] = plan.method_name
-                    log_entry["score"] = plan.score
-                    log_entry["variables"] = plan.variables
-                    print(f"  [Plan] {step.id} → {plan.method_name} (score={plan.score})")
+                    call = self.mapper.map(step)
+                    runtime_calls.append(call)
+                    log_entry["method_name"] = call.method_name
+                    log_entry["variables"] = call.variables
+                    print(f"  [Map] {step.id} → {call.method_name}")
                 except Exception as e:
-                    log_entry["error"] = f"Planning failed: {e}"
+                    log_entry["error"] = f"Mapping failed: {e}"
                     execution_log.append(log_entry)
-                    print(f"  [Plan ERROR] {step.id}: {e}")
+                    print(f"  [Map ERROR] {step.id}: {e}")
                     had_error = True
                     continue
 
                 # Execute
-                result = self.runtime_adapter.execute(plan.method_name, plan.variables)
+                result = self.runtime_adapter.execute(call.method_name, call.variables)
                 log_entry["execution_success"] = result.success
                 if not result.success:
                     log_entry["error"] = result.error
@@ -172,7 +175,7 @@ class ExecutionLoop:
                 success=not had_error,
                 attempts=attempt,
                 workflow=workflow,
-                plans=plans,
+                runtime_calls=runtime_calls,
                 execution_log=execution_log,
                 state=state_manager.get_state(),
                 validation_feedback=feedback,
@@ -191,7 +194,7 @@ class ExecutionLoop:
         if self.ir_mode == "library":
             if not ir_name:
                 raise ValueError("ir_name must be provided when ir_mode='library'.")
-            
+
             base_path = Path(__file__).resolve().parent
             file_path = base_path / "IR_examples" / f"{ir_name}.json"
 
@@ -201,7 +204,7 @@ class ExecutionLoop:
             with open(file_path, "r") as f:
                 generated_ir = json.load(f)
 
-            return generated_ir            
+            return generated_ir
 
         if self.ir_mode == "llm":
             if self.llm_client is None:

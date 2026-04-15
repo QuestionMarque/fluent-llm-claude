@@ -60,7 +60,7 @@ WorkflowDecomposer.decompose(ir)
   ↓
 Workflow(steps=[step_0, step_1, ...], metadata={...})
   ↓
-ValidatorWrapper → Planner → Adapter (in order)
+ValidatorWrapper → StepMapper → Adapter (in order)
 ```
 
 Future branching/loop support adds to this package —

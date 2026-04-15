@@ -1,7 +1,7 @@
 # capability_registry/
 
 Single source of truth for what the Tecan Fluent system can do.
-All planning and validation decisions must be grounded here —
+All validation and mapping lookups must be grounded here —
 no hardcoded method/tip/liquid/labware knowledge anywhere else.
 
 ---
@@ -64,8 +64,12 @@ The authoritative configuration file. Contains:
 ## Architecture Note
 
 The registry is **read-only at runtime**. Load it once at startup and
-pass the same instance to `ValidatorWrapper`, `Planner`, and
-`CandidateSelector`. Never reload it per-step.
+pass the same instance to `ValidatorWrapper` and `StepMapper`.
+Never reload it per-step.
+
+**Mapping invariant:** each step type must be supported by exactly one
+method. `tests/unit/test_mapper.py::TestRegistryInvariant` enforces
+this — the mapper relies on it for its 1:1 step→method lookup.
 
 ---
 

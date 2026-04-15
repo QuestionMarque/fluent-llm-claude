@@ -1,7 +1,8 @@
 # FluentControl Application Software 3.7 SP1
 # Capability registry for the fluent-llm execution engine.
 # All methods, tips, liquid classes, labware, and compatibility rules live here.
-# Planner and validation must read from this file — never hardcode knowledge elsewhere.
+# Mapper and validation must read from this file — never hardcode knowledge elsewhere.
+# Invariant: each step type must be supported by exactly one method.
 
 devices:
   FCA:

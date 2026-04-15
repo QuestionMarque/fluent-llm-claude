@@ -40,18 +40,20 @@ class Workflow:
     metadata: Dict[str, Any]
 ```
 
-### `plan.py`
-Defines `Plan` — the output contract from the Planner for a single step.
+### `runtime_call.py`
+Defines `RuntimeCall` — the output of the mapper for a single step.
 
 ```python
 @dataclass
-class Plan:
+class RuntimeCall:
     method_name: str          # FluentControl method to invoke
     variables: Dict[str, Any] # runtime variable key-value pairs
-    score: float              # composite score from ScoringEngine
-    reasoning: str            # human-readable selection explanation
     step_id: Optional[str]    # mirrors originating Step.id
 ```
+
+Because every step type maps to exactly one method, there are no
+selection or scoring fields — `RuntimeCall` is a direct translation of
+a validated `Step` into what the runtime adapter needs.
 
 ### `state.py`
 Defines `State` — lightweight mutable execution state.
@@ -94,11 +96,12 @@ class ValidationFeedback:
 ## Role in the Architecture
 
 ```
-STEP_SCHEMA ──► validation/ (schema checks)
-             ──► planner/   (variable mapping)
-Step/Workflow ──► workflow/  (decomposition)
-             ──► validation/ (input to validator)
-Plan         ──► runtime/   (method + variables to execute)
+STEP_SCHEMA  ──► validation/ (schema checks)
+              ──► mapper/     (variable mapping)
+Step/Workflow ──► workflow/   (decomposition)
+              ──► validation/ (input to validator)
+              ──► mapper/     (input to step mapper)
+RuntimeCall  ──► runtime/    (method + variables to execute)
 State        ──► orchestration/ (state tracking)
 Feedback     ──► orchestration/ (retry loop decisions)
 ```

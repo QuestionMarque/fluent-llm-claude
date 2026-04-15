@@ -25,13 +25,13 @@ ValidatorWrapper.validate_workflow(workflow)  → ValidationFeedback
     ↓
   [valid]
 for each step:
-    Planner.plan(step)             → Plan
+    StepMapper.map(step)           → RuntimeCall (1:1 lookup)
     PyFluentAdapter.execute(...)   → ExecutionResult
     StateManager.update(step, ok)  → mutate State
     append execution_log entry
     ↓
 ExecutionLoopResult {
-    success, attempts, workflow, plans,
+    success, attempts, workflow, runtime_calls,
     execution_log, state, validation_feedback,
     error, retry_prompt
 }
@@ -86,7 +86,7 @@ class ExecutionLoopResult:
     success: bool
     attempts: int
     workflow: Optional[Workflow]
-    plans: List[Plan]
+    runtime_calls: List[RuntimeCall]
     execution_log: List[dict]       # one entry per step
     error: Optional[str]
     retry_prompt: Optional[str]     # set on llm mode exhaustion
@@ -101,7 +101,7 @@ class ExecutionLoopResult:
 ```python
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.validation.validator_wrapper import ValidatorWrapper
-from execution_engine.planner.planner import Planner
+from execution_engine.mapper.step_mapper import StepMapper
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.orchestration.execution_loop import ExecutionLoop
 from main import FluentRuntime
@@ -110,7 +110,7 @@ from main import FluentRuntime
 registry = load_default_registry()
 
 loop = ExecutionLoop(
-    planner=Planner(registry=registry),
+    mapper=StepMapper(registry=registry),
     runtime_adapter=PyFluentAdapter(runtime=FluentRuntime()),
     validator=ValidatorWrapper(registry=registry),
     ir_mode="library",
@@ -118,7 +118,7 @@ loop = ExecutionLoop(
 )
 
 result = loop.run(ir_name="pipetting_cycle")
-print(result.success)       # True
-print(len(result.plans))    # 4
-print(result.state)         # State(tip_loaded=False, well_volumes={...}, execution_history=[...])
+print(result.success)               # True
+print(len(result.runtime_calls))    # 4
+print(result.state)                 # State(tip_loaded=False, well_volumes={...}, execution_history=[...])
 ```

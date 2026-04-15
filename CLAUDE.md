@@ -19,7 +19,8 @@ GitHub repo: https://github.com/QuestionMarque/fluent-llm-claude (branch: main)
 - **IFU (Instruction for Use)** — natural-language lab protocol; input for LLM mode.
 - **Step** — a single typed operation (e.g. `reagent_distribution`, `get_tips`).
 - **Workflow** — an ordered list of Steps.
-- **Plan** — output of the Planner for one Step: method name + runtime variables + score.
+- **RuntimeCall** — the `(method_name, variables)` pair a validated Step is
+  mapped to. Produced by `StepMapper`; consumed by the runtime adapter.
 
 ---
 
@@ -38,8 +39,8 @@ IFU text  ──or──  IR library name
    [ validation/ ]   ValidatorWrapper.validate_workflow()  →  ValidationFeedback
         │
         ▼
-   [ planner/ ]      CandidateSelector → ScoringEngine → VariableMapper  →  Plan
-        │
+   [ mapper/ ]       StepMapper.map(step)                 →  RuntimeCall
+        │                (1:1 lookup — no scoring, no selection)
         ▼
    [ runtime/ ]      PyFluentAdapter.execute(method_name, variables)
         │
@@ -47,8 +48,13 @@ IFU text  ──or──  IR library name
    [ workflow/ ]     StateManager.update(step, success)  →  State
 ```
 
-All decisions are grounded in `capability_registry/data/registry.yaml`.
+All lookups are grounded in `capability_registry/data/registry.yaml`.
 No hardcoded method/tip/liquid knowledge anywhere else.
+
+Because the registry guarantees exactly one method per step type, the
+mapping stage is purely mechanical — there is no planner, no candidate
+selection, and no scoring. Validation is the last decision point; once
+it passes, the workflow can be executed directly.
 
 ---
 
@@ -86,10 +92,10 @@ Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
 
 | Package | Role |
 |---------|------|
-| `models/` | `Step`, `Workflow`, `Plan`, `State`, `ValidationFeedback`; `STEP_SCHEMA` |
+| `models/` | `Step`, `Workflow`, `RuntimeCall`, `State`, `ValidationFeedback`; `STEP_SCHEMA` |
 | `capability_registry/` | `registry.yaml` loader; typed frozen dataclasses |
 | `validation/` | Schema + semantic validation; LLM retry prompt builder |
-| `planner/` | `CandidateSelector` → `ScoringEngine` → `VariableMapper` |
+| `mapper/` | `StepMapper` (1:1 step→method lookup) + `VariableMapper` |
 | `runtime/` | `PyFluentAdapter`; strict variable validation |
 | `workflow/` | `WorkflowDecomposer`; `StateManager`; `DependencyResolver` hook |
 | `orchestration/` | `ExecutionLoop`; `IR_examples/` (JSON IRs) |
@@ -120,12 +126,20 @@ Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
 
 ---
 
-## CandidateSelector (planner) behavior
+## Mapping rules
 
-- Hard-filters methods by supported step type.
-- Volume range check always applies.
-- Tip-type and liquid/tip compatibility checks **only apply when the value is a known registry entry**.
-  Unknown values (device-specific aliases like `FCA_DiTi_200uL`) pass through without rejection.
+- `StepMapper` looks up the one method that supports a step type via
+  `registry.methods_supporting(step.type)`. Exactly one must be found
+  (enforced by a registry invariant test).
+- `VariableMapper` translates `step.params` into the runtime variable dict:
+  - normalizes aliases (`DiTi_type` / `diti_type` → `tip_type`,
+    `well_offset` → `well_offsets`)
+  - drops `None` values (runtime adapter is strict)
+  - handles per-step-family field sets (distribution vs liquid op vs
+    labware transfer vs tip ops)
+
+If a future step type ever needs multiple implementations, reintroduce
+a planning/selection layer at that point — not prophylactically.
 
 ---
 
@@ -135,13 +149,13 @@ Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
 tests/unit/
   test_models.py
   test_validation.py
-  test_planner.py
+  test_mapper.py
   test_runtime.py
   test_orchestration.py
 ```
 
 Run with: `python3 -m pytest tests/ -q`
-Current count: 82 tests, all passing.
+Current count: 77 tests, all passing.
 
 ---
 

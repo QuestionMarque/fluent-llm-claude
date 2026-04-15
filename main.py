@@ -10,7 +10,7 @@ load_dotenv()
 
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.validation.validator_wrapper import ValidatorWrapper
-from execution_engine.planner.planner import Planner
+from execution_engine.mapper.step_mapper import StepMapper
 from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
 from execution_engine.orchestration.execution_loop import ExecutionLoop
 from execution_engine.workflow.decomposer import WorkflowDecomposer
@@ -63,14 +63,14 @@ def main():
 
     # 2. Instantiate components
     validator = ValidatorWrapper(registry=registry)
-    planner = Planner(registry=registry, enable_liquid_inference=True)
+    mapper = StepMapper(registry=registry)
     fluent_runtime = FluentRuntime()
     adapter = PyFluentAdapter(runtime=fluent_runtime, strict=True)
     decomposer = WorkflowDecomposer()
 
     # 3. Configure execution loop in library mode
     loop = ExecutionLoop(
-        planner=planner,
+        mapper=mapper,
         runtime_adapter=adapter,
         validator=validator,
         decomposer=decomposer,
@@ -95,10 +95,10 @@ def main():
     if result.workflow:
         print(f"\n  Workflow steps: {len(result.workflow.steps)}")
 
-    print(f"\n  Plans ({len(result.plans)}):")
-    for plan in result.plans:
-        print(f"    [{plan.step_id}] → {plan.method_name}  (score={plan.score:.4f})")
-        for k, v in plan.variables.items():
+    print(f"\n  Runtime calls ({len(result.runtime_calls)}):")
+    for call in result.runtime_calls:
+        print(f"    [{call.step_id}] → {call.method_name}")
+        for k, v in call.variables.items():
             print(f"        {k}: {v!r}")
 
     if result.state:
