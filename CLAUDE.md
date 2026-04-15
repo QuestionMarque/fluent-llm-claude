@@ -129,8 +129,11 @@ Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
 ## Mapping rules
 
 - `StepMapper` looks up the one method that supports a step type via
-  `registry.methods_supporting(step.type)`. Exactly one must be found
-  (enforced by a registry invariant test).
+  `registry.methods_supporting(step.type)`. The 1:1 invariant
+  (exactly one method per step type) is enforced at registry load
+  time by `RegistryValidator` — `load_registry()` raises
+  `RegistryLoadError` if any step type has zero or multiple supporting
+  methods, so the mapper trusts the result unconditionally.
 - `VariableMapper` translates `step.params` into the runtime variable dict:
   - normalizes aliases (`DiTi_type` / `diti_type` → `tip_type`,
     `well_offset` → `well_offsets`)
@@ -143,6 +146,24 @@ a planning/selection layer at that point — not prophylactically.
 
 ---
 
+## Registry load-time validation
+
+`capability_registry/loader.load_registry()` runs
+`RegistryValidator` immediately and refuses to return a broken
+registry. Errors (raise `RegistryLoadError`):
+
+- a step type claimed by more than one method (ambiguous)
+- a step type in `STEP_SCHEMA` with no supporting method (missing coverage)
+
+Warnings (returned via `RegistryValidator().validate(registry)`,
+not raised): methods/compatibility matrix referencing unknown tips or
+liquid classes.
+
+This collapses what would otherwise be N per-step `MapperError`
+failures into one clear startup failure.
+
+---
+
 ## Test suite
 
 ```
@@ -150,12 +171,13 @@ tests/unit/
   test_models.py
   test_validation.py
   test_mapper.py
+  test_capability_registry.py
   test_runtime.py
   test_orchestration.py
 ```
 
 Run with: `python3 -m pytest tests/ -q`
-Current count: 77 tests, all passing.
+Current count: 83 tests, all passing.
 
 ---
 

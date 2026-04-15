@@ -39,11 +39,17 @@ adapter does not have to.
 - `StepMapper(registry).map(step) → RuntimeCall`
 - `StepMapper(registry).map_workflow(workflow) → List[RuntimeCall]`
 
-Raises `MapperError` if zero or more than one methods are registered for
-a step type. Both conditions indicate a registry bug and should never
-happen for validated input — validation already rejects unknown step
-types, and `test_mapper.TestRegistryInvariant` enforces the 1:1
-invariant across the whole registry.
+Trusts that the registry satisfies the 1:1 step→method invariant:
+exactly one registered method per step type. That invariant is enforced
+at registry load time by `capability_registry.RegistryValidator` —
+`load_registry()` raises `RegistryLoadError` if any step type has zero
+or multiple supporting methods, so `StepMapper.map()` never has to
+deal with ambiguity.
+
+It still raises `MapperError` if a step's `type` is unknown to the
+registry. For library and LLM IRs this cannot happen — validation
+rejects unknown step types upstream. The check exists only as a guard
+for direct callers that bypass validation.
 
 ### `variable_mapper.py`
 `VariableMapper` — step-type-aware translation of `step.params` into the

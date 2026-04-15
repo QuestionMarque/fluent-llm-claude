@@ -44,10 +44,30 @@ registry.infer_liquid_class_for_tip(tip) → Optional[str]
 `load_default_registry()` — loads the bundled `data/registry.yaml`.
 `load_registry(path)` — loads from a custom YAML path.
 
+Both run `RegistryValidator` immediately and raise `RegistryLoadError`
+if any error-level issues are found. Pass `validate=False` to skip the
+check (only useful in unit tests that intentionally build broken
+registries). Warnings are not raised — fetch them with
+`RegistryValidator().validate(registry)` directly if you need them.
+
 ### `validator.py`
-`RegistryValidator` — checks the registry for internal consistency
-(methods referencing missing tips, compatibility matrix referencing
-missing liquid classes, etc.). Runs at load time or on demand.
+`RegistryValidator` — checks the registry for internal consistency.
+
+**Errors** (raised by the loader):
+- a step type is supported by more than one method (ambiguous mapping)
+- a step type in `STEP_SCHEMA` has no supporting method (incomplete coverage)
+
+Both break the 1:1 step→method invariant that `mapper.StepMapper`
+relies on, so the loader refuses the registry rather than letting the
+problem surface later as a per-step failure.
+
+**Warnings** (informational only):
+- methods referencing tip types or liquid classes that don't exist
+- compatibility matrix referencing unknown tips or liquid classes
+
+Override the coverage check by passing
+`validate(registry, expected_step_types=...)` — defaults to
+`STEP_SCHEMA.keys()`.
 
 ### `data/registry.yaml`
 The authoritative configuration file. Contains:
@@ -68,8 +88,9 @@ pass the same instance to `ValidatorWrapper` and `StepMapper`.
 Never reload it per-step.
 
 **Mapping invariant:** each step type must be supported by exactly one
-method. `tests/unit/test_mapper.py::TestRegistryInvariant` enforces
-this — the mapper relies on it for its 1:1 step→method lookup.
+method. `RegistryValidator` enforces this at load time — broken
+registries cannot be returned to callers, so the mapper can do its
+1:1 step→method lookup unconditionally.
 
 ---
 

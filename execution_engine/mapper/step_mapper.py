@@ -9,10 +9,12 @@ from .variable_mapper import VariableMapper
 class MapperError(Exception):
     """Raised when a step cannot be mapped to a runtime call.
 
-    Indicates a registry gap (no method supports this step type, or
-    multiple methods are registered for it). Normal authored IRs never
-    trigger this — validation plus the one-method-per-step-type invariant
-    keep the mapping total.
+    The only path that produces this is `step.type` not being declared
+    in any registered method's `supports` list. For library and LLM IRs
+    this can never happen — validation rejects unknown step types
+    upstream, and the registry loader refuses any registry that doesn't
+    cover every type in STEP_SCHEMA. The check remains as a defensive
+    guard for direct callers that bypass validation.
     """
 
 
@@ -20,16 +22,14 @@ class StepMapper:
     """Direct 1:1 mapping from a validated Step to a RuntimeCall.
 
     The capability registry guarantees that each step type is supported
-    by exactly one method, so no candidate selection or scoring is
-    required. Mapping is therefore purely mechanical:
+    by exactly one method (enforced at load time by RegistryValidator),
+    so no candidate selection or scoring is required. Mapping is purely
+    mechanical:
 
         1. Look up the single method whose `supports` list contains the
-           step type (registry.methods_supporting(step.type)).
+           step type (`registry.methods_supporting(step.type)`).
         2. Translate the step's params into the method's runtime variable
            dict via VariableMapper.
-
-    Raises MapperError if zero or multiple methods are registered for a
-    step type — both indicate a registry bug, not a runtime condition.
     """
 
     def __init__(self, registry: CapabilityRegistry):
@@ -42,22 +42,12 @@ class StepMapper:
         if not methods:
             raise MapperError(
                 f"No method in the registry supports step type '{step.type}'. "
-                "Add one to registry.yaml or remove the step."
+                "The step type is unknown — validation should have rejected it."
             )
-        if len(methods) > 1:
-            names = ", ".join(m.name for m in methods)
-            raise MapperError(
-                f"Step type '{step.type}' is ambiguous: {len(methods)} methods "
-                f"claim to support it ({names}). The registry must have exactly "
-                "one method per step type."
-            )
-
-        method = methods[0]
-        variables = self.variable_mapper.map(step)
 
         return RuntimeCall(
-            method_name=method.name,
-            variables=variables,
+            method_name=methods[0].name,
+            variables=self.variable_mapper.map(step),
             step_id=step.id,
         )
 

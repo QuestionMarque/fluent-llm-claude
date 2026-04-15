@@ -5,22 +5,50 @@ import yaml
 
 from .models import Device, MetaFlags, TipType, LiquidClass, Labware, Method, Rule
 from .registry import CapabilityRegistry
+from .validator import RegistryValidator
 
 _DEFAULT_REGISTRY_PATH = os.path.join(
     os.path.dirname(__file__), "data", "registry.yaml"
 )
 
 
-def load_default_registry() -> CapabilityRegistry:
+class RegistryLoadError(Exception):
+    """Raised when a loaded registry fails self-validation.
+
+    Indicates a code/config bug — either the YAML is internally
+    inconsistent (e.g. two methods claim the same step type) or it
+    fails to cover every step type declared in STEP_SCHEMA. Both
+    conditions break the 1:1 step→method invariant the mapper
+    depends on, so the loader refuses to return the broken registry.
+    """
+
+
+def load_default_registry(validate: bool = True) -> CapabilityRegistry:
     """Load the bundled registry.yaml shipped with the package."""
-    return load_registry(_DEFAULT_REGISTRY_PATH)
+    return load_registry(_DEFAULT_REGISTRY_PATH, validate=validate)
 
 
-def load_registry(path: str) -> CapabilityRegistry:
-    """Load a CapabilityRegistry from a YAML file at the given path."""
+def load_registry(path: str, validate: bool = True) -> CapabilityRegistry:
+    """Load a CapabilityRegistry from a YAML file at the given path.
+
+    By default the registry is validated immediately and the loader
+    raises `RegistryLoadError` if any errors are found. Pass
+    `validate=False` to skip validation (only useful in unit tests
+    that intentionally construct broken registries).
+    """
     with open(path, "r") as f:
         data = yaml.safe_load(f)
-    return _build_registry(data)
+    registry = _build_registry(data)
+
+    if validate:
+        result = RegistryValidator().validate(registry)
+        if not result.is_valid:
+            messages = "\n  - ".join(issue.message for issue in result.errors)
+            raise RegistryLoadError(
+                f"Registry at '{path}' failed validation:\n  - {messages}"
+            )
+
+    return registry
 
 
 def _build_registry(data: Dict[str, Any]) -> CapabilityRegistry:

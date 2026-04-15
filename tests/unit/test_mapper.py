@@ -133,14 +133,3 @@ class TestVariableMapper:
         assert variables.get("well_offsets") == "A1"
 
 
-class TestRegistryInvariant:
-    """Every step type the system knows must have exactly one supporting method."""
-
-    def test_every_step_type_has_one_method(self, registry):
-        from execution_engine.models.workflow import STEP_SCHEMA
-        for step_type in STEP_SCHEMA.keys():
-            methods = registry.methods_supporting(step_type)
-            assert len(methods) == 1, (
-                f"Step type '{step_type}' has {len(methods)} methods supporting it "
-                f"— expected exactly 1. Mapping would be ambiguous."
-            )
