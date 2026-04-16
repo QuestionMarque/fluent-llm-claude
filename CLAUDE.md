@@ -31,8 +31,9 @@ GitHub repo: https://github.com/QuestionMarque/fluent-llm-claude (branch: main)
 IFU text  ──or──  IR library name
         │
         ▼
-   [ llm/ ]          LLMClient.generate_ir(prompt)         (LLM mode only)
-        │
+   [ llm/ ]          IRGenerator.generate(ifu) ────► LLMClient(backend)
+        │                     └─ multi-turn feedback loop with validator
+        │                        (backend = OpenAIBackend | DemoBackend | …)
         ▼
    [ workflow/ ]     WorkflowDecomposer.decompose(ir)  →  Workflow
         │
@@ -43,7 +44,7 @@ IFU text  ──or──  IR library name
    [ models/ ]       RuntimeCall.from_step(step, registry) →  RuntimeCall
         │                (1:1 registry lookup + variable translation)
         ▼
-   [ runtime/ ]      PyFluentAdapter.execute(method_name, variables)
+   [ runtime/ ]      PyFluentAdapter.execute(call)            (async, PyFluent backend)
         │
         ▼
    [ workflow/ ]     StateManager.update(step, success)  →  State
@@ -63,7 +64,7 @@ decision point; once it passes, each step is converted to a
 ## Execution modes
 
 - **`ir_mode="library"`** — loads IR from `orchestration/IR_examples/<name>.json`; fail-fast on validation errors; deterministic.
-- **`ir_mode="llm"`** — generates IR via LLM; retries with corrective prompt up to `max_retries`.
+- **`ir_mode="llm"`** — delegates IR generation to an `IRGenerator` (LLM + validator + feedback loop). The feedback loop is a proper multi-turn chat: the model sees its own prior response plus structured validation errors, and revises. Requires `ir_generator=` on `ExecutionLoop`.
 
 ---
 
@@ -99,8 +100,8 @@ Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
 | `validation/` | Schema + semantic validation; LLM retry prompt builder |
 | `runtime/` | `PyFluentAdapter`; strict variable validation |
 | `workflow/` | `WorkflowDecomposer`; `StateManager`; `DependencyResolver` hook |
-| `orchestration/` | `ExecutionLoop`; `IR_examples/` (JSON IRs) |
-| `llm/` | `LLMClient`; `PromptBuilder`; `IR_SCHEMA` |
+| `orchestration/` | `ExecutionLoop` (sync `prepare()` + async `run()`); `IR_examples/` (JSON IRs); `runtime_calls_to_dict_list` helper |
+| `llm/` | `LLMClient` + `LLMBackend` (`OpenAIBackend`, `DemoBackend`); `IRGenerator` (multi-turn feedback loop); `PromptBuilder`; env-var factory |
 
 ---
 
@@ -109,8 +110,12 @@ Available examples (as of this writing): `pipetting_cycle`, `just_tips`,
 - `execution_engine/models/workflow.py` — `STEP_SCHEMA` (single source of truth for step structure)
 - `execution_engine/capability_registry/data/registry.yaml` — all methods, tips, liquid classes, labware, rules
 - `execution_engine/orchestration/IR_examples/*.json` — all predefined IRs (one file per workflow)
-- `execution_engine/orchestration/execution_loop.py` — `ExecutionLoop`; `ir_mode`/`ir_name` params
-- `main.py` — runnable demo in library mode with stub runtime
+- `execution_engine/orchestration/execution_loop.py` — `ExecutionLoop`; `ir_mode`/`ir_name` params; `PreparedWorkflow`
+- `execution_engine/llm/ir_generator.py` — IFU → validated IR feedback loop
+- `execution_engine/llm/backends.py` — swappable provider backends (OpenAI, Demo, future)
+- `execution_engine/runtime/pyfluent_adapter.py` — async bridge to PyFluent
+- `main.py` — library-mode demo: validate + emit portable RuntimeCall JSON (no execution)
+- `demo_llm.py` — LLM-mode demo: IFU → validated IR with scripted feedback loop (no API key)
 
 ---
 
@@ -167,6 +172,25 @@ failure.
 
 ---
 
+## LLM mode
+
+- Backend abstraction in `llm/backends.py`: `LLMBackend` Protocol, with
+  `OpenAIBackend` (requires `openai` + `OPENAI_API_KEY`) and
+  `DemoBackend` (scripted responses — no network, no key).
+- `LLMClient(backend=…, max_json_retries=…)` — provider-agnostic façade.
+  `LLMClient.from_env()` reads `LLM_PROVIDER` (default `openai`),
+  `LLM_MODEL` (default `gpt-4o-mini`), and `OPENAI_API_KEY`.
+- `IRGenerator` owns the **multi-turn feedback loop**: sends the IFU,
+  validates the returned IR, appends validation errors as a new user
+  turn, asks the model to revise, loops up to `max_retries`.
+- `ExecutionLoop` delegates LLM-mode preparation to `IRGenerator` —
+  pass it via the `ir_generator=` constructor argument.
+- `demo_llm.py` runs the full LLM scenario without an API key: a
+  scripted `DemoBackend` deliberately returns a flawed IR first so the
+  feedback loop is visible, then returns a valid IR.
+
+---
+
 ## Test suite
 
 ```
@@ -176,10 +200,11 @@ tests/unit/
   test_capability_registry.py
   test_runtime.py
   test_orchestration.py
+  test_llm.py
 ```
 
 Run with: `python3 -m pytest tests/ -q`
-Current count: 80 tests, all passing.
+Current count: 107 tests, all passing.
 
 ---
 
@@ -187,7 +212,9 @@ Current count: 80 tests, all passing.
 
 ```bash
 python3 -m pytest tests/ -q          # run all tests
-python3 main.py                       # run library-mode demo
+python3 main.py                       # library-mode demo (validate + emit JSON)
+python3 demo_llm.py                   # LLM-mode demo with DemoBackend (no API key)
+python3 demo_llm.py --provider env    # same, but via LLM_PROVIDER / OPENAI_API_KEY
 git push origin main                  # push to GitHub
 ```
 
@@ -198,4 +225,77 @@ git push origin main                  # push to GitHub
 - Python 3; no type: ignore; dataclasses throughout.
 - `_set_if(target, key, value)` — only write to dict if value is not None (runtime strictness).
 - Registry is the authority — never hardcode tip/liquid/method knowledge in code.
-- Extension without modification: new step types go in `STEP_SCHEMA` + `registry.yaml`; new decomposers use `@register_decomposer`.
+- Extension without modification: new step types go in `STEP_SCHEMA` + `registry.yaml`; new decomposers use `@register_decomposer`; new LLM providers are new `LLMBackend` classes in `llm/backends.py`.
+
+---
+
+## Roadmap / TODO
+
+Running list of work the codebase has queued up. Keep it in priority order;
+tick items off by moving them into a short "Recently done" section at the
+bottom (or delete them once documented elsewhere).
+
+### Near-term
+
+- [ ] **Install PyFluent as a real dependency.** Today the line in
+  `requirements.txt` is commented out. Once the upstream repo
+  (`https://github.com/SLKS99/PyFluent`) is installable:
+  `pip install "pyfluent @ git+https://github.com/SLKS99/PyFluent.git"`,
+  un-comment the line, import `FluentVisionX` behind a try/except, and
+  add a `--execute` flag to `main.py` that opens an async
+  `PyFluentAdapter` against a `FluentVisionX(simulation_mode=True)`
+  backend.
+- [ ] **Round-trip the portable JSON artifact.** Add
+  `execution_engine/artifact/{reader.py,writer.py}` so a saved
+  `*.runtime_calls.json` can be loaded back into `List[RuntimeCall]`
+  and handed to `PyFluentAdapter.execute_workflow`. Enables replay
+  without re-running LLM / validation.
+- [ ] **Registry hash in artifact metadata.** Embed a SHA256 of
+  `registry.yaml` in the JSON artifact so a replay fails loudly if it
+  runs against a different registry than it was generated with.
+
+### LLM layer
+
+- [ ] **Add a `pdf`/`docx` IFU loader.** `PromptBuilder.build(...)` is
+  string-only today; a thin file-loader that extracts plain text would
+  let real IFU documents drop in.
+- [ ] **Anthropic backend + Azure OpenAI backend** in `llm/backends.py`.
+  Each is roughly ~40 LOC once `OpenAIBackend` sets the pattern.
+- [ ] **Few-shot examples in `PromptBuilder`.** Include one or two
+  canonical IFU → IR pairs (picked from `IR_examples/`) so the LLM has
+  worked-out examples alongside the schema/registry context.
+- [ ] **Conversation transcript export.** `IRGenerationResult.conversation`
+  is already available — add a helper to dump it to Markdown or JSONL
+  for offline review.
+
+### Testing / CI
+
+- [ ] **`test_default_registry_has_no_warnings`.** The loader already
+  catches errors; a test to assert zero warnings on the bundled
+  `registry.yaml` would catch drift earlier.
+- [ ] **Integration test: `demo_llm.py` runs to completion** (subprocess
+  smoke test) so future refactors can't silently break the demo.
+
+### Runtime / PyFluent bridge
+
+- [ ] **Extend the `DISPATCH` table** in `pyfluent_adapter.py` as
+  PyFluent surfaces more dedicated methods (`reagent_distribution`,
+  `sample_transfer`, `mix_volume`, `transfer_labware`, `empty_tips`).
+  Today those go via `run_method` fallback.
+- [ ] **Optional `WorklistExporter`** that emits `.gwl`/`.csv` for
+  workflows that are pure pipetting (no labware transfers, no generic
+  `run_method` calls). Useful for offline audit/simulation.
+
+### Recently done
+
+- Replaced flat retry prompts with a proper multi-turn LLM feedback
+  loop (`IRGenerator`).
+- Introduced swappable `LLMBackend` (`OpenAIBackend`, `DemoBackend`)
+  and `LLMClient.from_env()`.
+- `demo_llm.py` runs the LLM scenario end-to-end with no API key.
+- Async `PyFluentAdapter` + `ExecutionLoop.prepare`/`run`/`run_sync`
+  split; portable `RuntimeCall` JSON artifact.
+- Load-time registry invariant checking (`RegistryValidator` +
+  `RegistryLoadError`).
+- Deleted the mapper package; folded conversion into
+  `RuntimeCall.from_step(step, registry)`.

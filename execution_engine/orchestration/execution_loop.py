@@ -79,7 +79,7 @@ class ExecutionLoop:
         validator: ValidatorWrapper,
         runtime_adapter: Optional[PyFluentAdapter] = None,
         decomposer: Optional[WorkflowDecomposer] = None,
-        llm_client=None,
+        ir_generator=None,
         ir_mode: str = "library",
         max_retries: int = 3,
     ):
@@ -87,7 +87,10 @@ class ExecutionLoop:
         self.validator = validator
         self.runtime_adapter = runtime_adapter
         self.decomposer = decomposer or WorkflowDecomposer()
-        self.llm_client = llm_client
+        # ir_generator is an llm.IRGenerator-compatible object. We
+        # accept it by duck type to avoid a hard import of the llm
+        # package in library-mode users.
+        self.ir_generator = ir_generator
         self.ir_mode = ir_mode
         self.max_retries = max_retries
         self.feedback_builder = FeedbackBuilder()
@@ -99,94 +102,128 @@ class ExecutionLoop:
     def prepare(self, prompt: str = "", ir_name: str = "") -> PreparedWorkflow:
         """Obtain IR → Workflow → validate → build RuntimeCalls.
 
-        No hardware touched, no state updates. In LLM mode this loop
-        still handles the validation-retry cycle. Safe to call without
-        a runtime adapter configured.
+        Mode-dependent:
+        - library: load an IR JSON from disk, validate once (fail-fast).
+        - llm:     delegate to the IRGenerator, which drives a
+                   multi-turn feedback loop until the IR validates.
+
+        No hardware touched, no state updates. Safe to call without a
+        runtime adapter configured.
         """
-        retry_prompt = prompt
-        last_feedback: Optional[ValidationFeedback] = None
+        if self.ir_mode == "library":
+            return self._prepare_library(ir_name)
+        if self.ir_mode == "llm":
+            return self._prepare_llm(prompt)
+        return PreparedWorkflow(
+            success=False,
+            attempts=0,
+            error=f"Unknown ir_mode: '{self.ir_mode}'",
+        )
 
-        for attempt in range(1, self.max_retries + 2):
-            print(f"\n[ExecutionLoop] Prepare attempt {attempt}")
+    def _prepare_library(self, ir_name: str) -> PreparedWorkflow:
+        print("\n[ExecutionLoop] Library mode")
+        try:
+            ir = self._load_library_ir(ir_name)
+        except Exception as e:
+            return PreparedWorkflow(
+                success=False,
+                attempts=1,
+                error=f"Failed to obtain IR: {e}",
+            )
 
-            # Step 1: Obtain IR
+        if isinstance(ir, Workflow):
+            workflow = ir
+            print(f"[ExecutionLoop] Using pre-built Workflow: {len(workflow.steps)} step(s)")
+            feedback = self.validator.validate_workflow(workflow)
+            if feedback.errors:
+                print(
+                    f"[ExecutionLoop] Advisory validation — "
+                    f"{len(feedback.errors)} issue(s) noted (proceeding)"
+                )
+        else:
             try:
-                ir = self._obtain_ir(retry_prompt, ir_name)
+                workflow = self.decomposer.decompose(ir)
+                print(f"[ExecutionLoop] Decomposed {len(workflow.steps)} step(s)")
             except Exception as e:
                 return PreparedWorkflow(
                     success=False,
-                    attempts=attempt,
-                    error=f"Failed to obtain IR: {e}",
+                    attempts=1,
+                    error=f"Workflow decomposition failed: {e}",
                 )
 
-            # Step 2: Decompose into Workflow (or use pre-built Workflow directly)
-            if isinstance(ir, Workflow):
-                workflow = ir
-                print(f"[ExecutionLoop] Using pre-built Workflow: {len(workflow.steps)} step(s)")
-                feedback = self.validator.validate_workflow(workflow)
-                last_feedback = feedback
-                if feedback.errors:
-                    print(
-                        f"[ExecutionLoop] Advisory validation — "
-                        f"{len(feedback.errors)} issue(s) noted (proceeding)"
-                    )
-            else:
-                try:
-                    workflow = self.decomposer.decompose(ir)
-                    print(f"[ExecutionLoop] Decomposed {len(workflow.steps)} step(s)")
-                except Exception as e:
-                    return PreparedWorkflow(
-                        success=False,
-                        attempts=attempt,
-                        error=f"Workflow decomposition failed: {e}",
-                    )
+            feedback = self.validator.validate_workflow(workflow)
+            print(f"[ExecutionLoop] Validation: {self.feedback_builder.summarize(feedback)}")
 
-                feedback = self.validator.validate_workflow(workflow)
-                last_feedback = feedback
-                print(f"[ExecutionLoop] Validation: {self.feedback_builder.summarize(feedback)}")
+            if not feedback.is_valid:
+                # Library IRs are authored and must always validate.
+                return PreparedWorkflow(
+                    success=False,
+                    attempts=1,
+                    workflow=workflow,
+                    error="Validation failed in library mode (fail-fast). This is a code bug.",
+                    validation_feedback=feedback,
+                )
 
-                if not feedback.is_valid:
-                    if self.ir_mode == "library":
-                        return PreparedWorkflow(
-                            success=False,
-                            attempts=attempt,
-                            workflow=workflow,
-                            error="Validation failed in library mode (fail-fast). This is a code bug.",
-                            validation_feedback=feedback,
-                        )
+        return self._finalize_runtime_calls(workflow, feedback, attempts=1)
 
-                    retry_prompt = self.feedback_builder.build_retry_prompt(feedback, retry_prompt)
-                    print("[ExecutionLoop] Validation failed — retrying with corrective prompt...")
-                    continue
-
-            # Step 3: Build a RuntimeCall per step
-            runtime_calls: List[RuntimeCall] = []
-            for step in workflow.steps:
-                try:
-                    runtime_calls.append(RuntimeCall.from_step(step, self.registry))
-                except Exception as e:
-                    return PreparedWorkflow(
-                        success=False,
-                        attempts=attempt,
-                        workflow=workflow,
-                        validation_feedback=feedback,
-                        error=f"Building runtime call for '{step.id}' failed: {e}",
-                    )
-
+    def _prepare_llm(self, ifu_text: str) -> PreparedWorkflow:
+        print("\n[ExecutionLoop] LLM mode")
+        if self.ir_generator is None:
             return PreparedWorkflow(
-                success=True,
-                attempts=attempt,
-                workflow=workflow,
-                runtime_calls=runtime_calls,
-                validation_feedback=feedback,
+                success=False,
+                attempts=0,
+                error=(
+                    "ir_mode='llm' requires an ir_generator. Construct one with "
+                    "execution_engine.llm.IRGenerator and pass it to ExecutionLoop."
+                ),
+            )
+        if not ifu_text:
+            return PreparedWorkflow(
+                success=False,
+                attempts=0,
+                error="Empty prompt / IFU text in LLM mode.",
             )
 
+        result = self.ir_generator.generate(ifu_text)
+
+        if not result.success or result.workflow is None:
+            return PreparedWorkflow(
+                success=False,
+                attempts=result.attempts,
+                workflow=result.workflow,
+                validation_feedback=result.validation_feedback,
+                error=result.error or "IR generation did not produce a valid workflow.",
+            )
+
+        return self._finalize_runtime_calls(
+            result.workflow, result.validation_feedback, attempts=result.attempts
+        )
+
+    def _finalize_runtime_calls(
+        self,
+        workflow: Workflow,
+        feedback: Optional[ValidationFeedback],
+        attempts: int,
+    ) -> PreparedWorkflow:
+        runtime_calls: List[RuntimeCall] = []
+        for step in workflow.steps:
+            try:
+                runtime_calls.append(RuntimeCall.from_step(step, self.registry))
+            except Exception as e:
+                return PreparedWorkflow(
+                    success=False,
+                    attempts=attempts,
+                    workflow=workflow,
+                    validation_feedback=feedback,
+                    error=f"Building runtime call for '{step.id}' failed: {e}",
+                )
+
         return PreparedWorkflow(
-            success=False,
-            attempts=self.max_retries + 1,
-            error=f"Exhausted {self.max_retries} retry attempt(s).",
-            retry_prompt=retry_prompt,
-            validation_feedback=last_feedback,
+            success=True,
+            attempts=attempts,
+            workflow=workflow,
+            runtime_calls=runtime_calls,
+            validation_feedback=feedback,
         )
 
     # ------------------------------------------------------------------
@@ -259,28 +296,15 @@ class ExecutionLoop:
     # IR loading
     # ------------------------------------------------------------------
 
-    def _obtain_ir(self, prompt: str, ir_name: str) -> Union[Dict[str, Any], Workflow]:
-        if self.ir_mode == "library":
-            if not ir_name:
-                raise ValueError("ir_name must be provided when ir_mode='library'.")
-
-            base_path = Path(__file__).resolve().parent
-            file_path = base_path / "IR_examples" / f"{ir_name}.json"
-
-            if not file_path.exists():
-                raise ValueError(f"IR '{ir_name}' not found in IR_examples")
-
-            with open(file_path, "r") as f:
-                generated_ir = json.load(f)
-
-            return generated_ir
-
-        if self.ir_mode == "llm":
-            if self.llm_client is None:
-                raise RuntimeError("llm_client is required when ir_mode='llm'.")
-            return self.llm_client.generate_ir(prompt)
-
-        raise ValueError(f"Unknown ir_mode: '{self.ir_mode}'")
+    def _load_library_ir(self, ir_name: str) -> Union[Dict[str, Any], Workflow]:
+        if not ir_name:
+            raise ValueError("ir_name must be provided when ir_mode='library'.")
+        base_path = Path(__file__).resolve().parent
+        file_path = base_path / "IR_examples" / f"{ir_name}.json"
+        if not file_path.exists():
+            raise ValueError(f"IR '{ir_name}' not found in IR_examples")
+        with open(file_path, "r") as f:
+            return json.load(f)
 
 
 # ---------------------------------------------------------------------------

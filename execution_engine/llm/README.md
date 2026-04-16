@@ -1,69 +1,153 @@
 # llm/
 
-Optional LLM integration for IFU → IR generation.
-**The system runs fully in library mode without this package.**
-Only instantiate `LLMClient` when `ir_mode="llm"`.
+Natural-language IFU → validated IR, with a multi-turn feedback loop
+back to the LLM when the first attempt doesn't pass validation.
+
+**Optional.** Library-mode callers (`ir_mode="library"`) never touch
+this package. Import it only when you want LLM-generated IR.
+
+---
+
+## Architecture
+
+```
+IFU text
+  │
+  ▼
+PromptBuilder.build(ifu, registry)                → initial prompt
+  │
+  ▼
+IRGenerator.generate(ifu)                         ← multi-turn loop
+  │    │
+  │    ├─ LLMClient.complete_conversation(conv)
+  │    │     └─ LLMBackend (OpenAIBackend | DemoBackend | …)
+  │    │
+  │    ├─ WorkflowDecomposer.decompose(ir)
+  │    │
+  │    ├─ ValidatorWrapper.validate_workflow(wf)
+  │    │
+  │    └─ if invalid & retries remain:
+  │           FeedbackBuilder.build_retry_prompt(feedback)
+  │           LLMClient.continue_with(conv, feedback_message)
+  │           loop.
+  ▼
+IRGenerationResult { success, attempts, ir, workflow, feedback, conversation }
+```
+
+The feedback loop is a **proper multi-turn chat**: each retry appends a
+new `user` message with the validation report to the existing
+conversation, so the model sees (a) the original IFU, (b) its own prior
+assistant turn, and (c) a structured explanation of what went wrong.
+This is a significant improvement over the previous flat-prompt retry
+that reconstructed a fresh prompt on every attempt.
 
 ---
 
 ## Modules
 
+### `backends.py`
+- `LLMBackend` — minimal Protocol: `complete(messages) -> raw_text`.
+- `OpenAIBackend` — wraps OpenAI Chat Completions with structured JSON
+  response format. Requires `openai` installed and an API key.
+- `DemoBackend` — scripted responses for tests and the no-key demo.
+  Accepts either a list of responses (popped in order) or a callable.
+
 ### `llm_client.py`
-`LLMClient` — calls an LLM provider to generate an IR from a prompt.
+`LLMClient` — provider-agnostic façade over a backend.
 
-- Supports: OpenAI (`provider="openai"`)
-- Enforces structured JSON output via `response_format={"type": "json_object"}`
-- Retries up to `max_json_retries` times on JSON parse failures
-- Raises `StructuredJSONError` after exhausting retries
+- `LLMClient(backend=..., max_json_retries=3)` — explicit
+- `LLMClient.from_env(demo_script=None)` — reads `LLM_PROVIDER`,
+  `LLM_MODEL`, `OPENAI_API_KEY` from environment.
+- `generate_ir(prompt)` — single-turn convenience.
+- `start_conversation(user, system)` → `Conversation`
+- `complete_conversation(conv)` — sends current messages, parses JSON,
+  appends assistant turn. Retries JSON-parse failures only.
+- `continue_with(conv, user_msg)` — appends a follow-up user turn and
+  asks the backend for a new response. This is what drives the
+  feedback loop.
 
-**Extending to other providers:**
-Add a branch in `_call_provider()` and a corresponding `_init_<provider>()`.
+### `ir_generator.py`
+`IRGenerator` — the orchestrator that owns the IFU → validated IR
+pipeline end-to-end. Used by `ExecutionLoop` when `ir_mode="llm"`.
 
 ### `prompt_builder.py`
-`PromptBuilder` — constructs complete prompts for IFU → IR generation.
-
-Injects capability context from the registry so the LLM:
-- Knows which step types exist (with required/optional fields)
-- Knows which tip types, liquid classes, and labware are available
-- Produces schema-valid, registry-grounded IR output
+`PromptBuilder` — injects capability context (step schema, available
+tips, liquid classes, labware) so the LLM can generate registry-grounded
+IR rather than hallucinating names.
 
 ### `schema.py`
-`IR_SCHEMA` — lightweight JSON schema for LLM output structure validation.
-Confirms the response has a `steps` list before handing it to the decomposer.
-Deep validation (required fields, step types) happens in `ValidatorWrapper`.
+`IR_SCHEMA` — lightweight shape check. Deep validation is
+`ValidatorWrapper`'s job.
 
 ---
 
-## LLM Mode Flow
+## Environment variables
+
+| Variable         | Used by                 | Default         |
+|------------------|-------------------------|-----------------|
+| `LLM_PROVIDER`   | `LLMClient.from_env`    | `openai`        |
+| `LLM_MODEL`      | `OpenAIBackend`         | `gpt-4o-mini`   |
+| `OPENAI_API_KEY` | `OpenAIBackend`         | *(required)*    |
+
+For the `demo` provider no env var is required; just pass
+`demo_script=[…]` explicitly.
+
+---
+
+## Demo (no API key required)
 
 ```
-IFU text
-  ↓
-PromptBuilder.build(ifu_text, context)
-  ↓ (prompt string)
-LLMClient.generate_ir(prompt)
-  ↓ (IR dict or StructuredJSONError)
-ExecutionLoop validates → retries with corrective prompt if invalid
+python demo_llm.py
 ```
+
+`demo_llm.py` uses a `DemoBackend` scripted to return a deliberately
+incomplete IR first, so you can watch the validation feedback loop kick
+in. The second scripted response is correct and the run finishes with a
+valid, registry-grounded IR plus the portable JSON artifact.
+
+To run against a real provider instead:
+
+```
+export LLM_PROVIDER=openai
+export LLM_MODEL=gpt-4o-mini
+export OPENAI_API_KEY=sk-...
+python demo_llm.py --provider env
+```
+
+---
+
+## Adding a new provider
+
+1. Write a new class in `backends.py` that satisfies the `LLMBackend`
+   Protocol (has a `name` attribute and a `complete(messages)` method).
+2. Add a branch in `LLMClient.from_env` keyed on `LLM_PROVIDER`.
+3. Export it from `llm/__init__.py`.
+
+Everything else in the pipeline is provider-agnostic.
 
 ---
 
 ## Minimal Usage
 
 ```python
-import os
-from execution_engine.llm.llm_client import LLMClient
-from execution_engine.llm.prompt_builder import PromptBuilder
 from execution_engine.capability_registry.loader import load_default_registry
-
-os.environ["OPENAI_API_KEY"] = "sk-..."
+from execution_engine.llm import DemoBackend, IRGenerator, LLMClient, PromptBuilder
+from execution_engine.validation.validator_wrapper import ValidatorWrapper
 
 registry = load_default_registry()
-builder = PromptBuilder(registry=registry)
-client = LLMClient(provider="openai", model="gpt-4o-mini")
+client = LLMClient(backend=DemoBackend(script=[YOUR_IR_DICT]))
+gen = IRGenerator(
+    client=client,
+    prompt_builder=PromptBuilder(registry=registry),
+    validator=ValidatorWrapper(registry=registry),
+    max_retries=3,
+)
 
-ifu = "Distribute 100 µL of PBS buffer into all wells of a 96-well plate."
-prompt = builder.build(ifu)
-ir = client.generate_ir(prompt)
-print(ir)  # {"steps": [...]}
+result = gen.generate("Distribute 100 µL of Buffer into all 96 wells.")
+if result.success:
+    workflow = result.workflow        # typed Workflow ready to execute
+    ir = result.ir                    # dict IR for audit
+    conv = result.conversation        # full chat history
+else:
+    feedback = result.validation_feedback
 ```

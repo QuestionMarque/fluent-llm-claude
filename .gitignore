@@ -46,5 +46,5 @@ out/
 .next/
 .nuxt/
 
-# Demo output (RuntimeCall JSON artifacts)
+# Demo output (RuntimeCall JSON artifacts from main.py / demo_llm.py)
 *.runtime_calls.json
