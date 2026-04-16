@@ -3,3 +3,11 @@ python-dotenv>=1.0.0
 pyyaml>=6.0
 pydantic>=2.0.0
 pytest>=7.0.0
+
+# Runtime backend for executing workflows on a Tecan Fluent.
+# Not required for validation, decomposition, or JSON export — only
+# needed when ExecutionLoop.run() actually drives the hardware (or its
+# simulation mode). Install directly from the upstream repo until a
+# PyPI release is published:
+#   pip install "pyfluent @ git+https://github.com/SLKS99/PyFluent.git"
+# pyfluent @ git+https://github.com/SLKS99/PyFluent.git

@@ -440,7 +440,8 @@ methods:
     min_volume_uL: 0
     max_volume_uL: 0
     variables:
-      - tip_type
+      - diti_type
+      - tip_indices
 
   DropTipsToLocation:
     description: Drop loaded tips into a waste container or specific labware

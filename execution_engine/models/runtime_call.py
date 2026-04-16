@@ -116,8 +116,10 @@ def _map_transfer_labware(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _map_get_tips(params: Dict[str, Any]) -> Dict[str, Any]:
+    # PyFluent's backend.get_tips expects `diti_type=...`, not `tip_type`.
+    # Emit the PyFluent kwarg directly so execution is a clean **unpack.
     result: Dict[str, Any] = {}
-    _set_if(result, "tip_type", _resolve_tip_type(params))
+    _set_if(result, "diti_type", _resolve_tip_type(params))
     _set_if(result, "tip_indices", params.get("tip_indices"))
     _set_if(result, "airgap_volume", params.get("airgap_volume"))
     _set_if(result, "airgap_speed", params.get("airgap_speed"))

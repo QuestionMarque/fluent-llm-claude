@@ -1,56 +1,37 @@
-"""main.py — End-to-end demonstration of the fluent-llm execution engine.
+"""main.py — Library-mode demo of the fluent-llm execution engine.
 
-Runs in library mode by default (no LLM or network access required).
-To use LLM mode: set OPENAI_API_KEY in a .env file and switch ir_mode="llm".
+Runs the full preparation pipeline (obtain IR → decompose → validate →
+build RuntimeCalls) and emits the portable JSON artifact that a PyFluent
+executor would consume.
+
+PyFluent execution itself is intentionally NOT included here — this demo
+only produces and inspects the artifact. To actually run the workflow
+on a Fluent (or FluentVisionX simulation), see the notes at the bottom
+of this file.
 """
+import json
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.validation.validator_wrapper import ValidatorWrapper
-from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter
-from execution_engine.orchestration.execution_loop import ExecutionLoop
+from execution_engine.orchestration.execution_loop import (
+    ExecutionLoop,
+    runtime_calls_to_dict_list,
+)
 from execution_engine.workflow.decomposer import WorkflowDecomposer
 
 
-# ---------------------------------------------------------------------------
-# Stub FluentRuntime — replace with real PyFluent bindings in production
-# ---------------------------------------------------------------------------
-class FluentRuntime:
-    """Simulated Fluent hardware runtime for demonstration purposes."""
-
-    def PrepareMethod(self, method_name: str) -> None:
-        print(f"    [FluentRuntime] PrepareMethod({method_name!r})")
-
-    def SetVariableValue(self, name: str, value) -> None:
-        print(f"    [FluentRuntime] SetVariableValue({name!r}, {value!r})")
-
-    def RunMethod(self) -> str:
-        print(f"    [FluentRuntime] RunMethod() → OK")
-        return "OK"
-
-
-# ---------------------------------------------------------------------------
-# Demo state manager (optional — illustrates how state could be observed)
-# ---------------------------------------------------------------------------
-class DemoStateManager:
-    def __init__(self):
-        self.step_count = 0
-
-    def on_step_complete(self, step_id: str, success: bool):
-        self.step_count += 1
-        status = "✓" if success else "✗"
-        print(f"    [StateManager] {status} step #{self.step_count}: {step_id}")
-
-
-def main():
+def main() -> int:
     print("=" * 62)
     print("  fluent-llm Execution Engine — Library Mode Demo")
+    print("  (validation + RuntimeCall JSON artifact; no execution)")
     print("=" * 62)
 
-    # 1. Load capability registry
+    # 1. Load capability registry (fail-fast on load-time invariants)
     registry = load_default_registry()
     print(
         f"\n[Setup] Registry loaded: "
@@ -60,67 +41,81 @@ def main():
         f"{len(registry.labware)} labware types"
     )
 
-    # 2. Instantiate components
+    # 2. Build the loop without a runtime adapter — preparation doesn't
+    #    need one. Leaving runtime_adapter=None will cause loop.run() to
+    #    raise, but we only call loop.prepare() here, which is backend-free.
     validator = ValidatorWrapper(registry=registry)
-    fluent_runtime = FluentRuntime()
-    adapter = PyFluentAdapter(runtime=fluent_runtime, strict=True)
     decomposer = WorkflowDecomposer()
 
-    # 3. Configure execution loop in library mode
     loop = ExecutionLoop(
         registry=registry,
-        runtime_adapter=adapter,
         validator=validator,
         decomposer=decomposer,
+        runtime_adapter=None,
         ir_mode="library",
         max_retries=1,
-        # llm_client=LLMClient(provider="openai", model="gpt-4o-mini")  # enable for LLM mode
     )
 
-    # 4. Run a predefined IR from the library
+    # 3. Run the preparation phase for one of the bundled IR examples
     ir_name = "pipetting_cycle"
-    print(f"\n[Run] Executing IR: '{ir_name}'")
-    result = loop.run(ir_name=ir_name)
+    print(f"\n[Run] Preparing IR: '{ir_name}'")
+    prepared = loop.prepare(ir_name=ir_name)
 
-    # 5. Display results
+    # 4. Validation summary
     print("\n" + "=" * 62)
-    print(f"  Result:   {'SUCCESS' if result.success else 'FAILED'}")
-    print(f"  Attempts: {result.attempts}")
+    print(f"  Result:   {'READY TO EXECUTE' if prepared.success else 'PREPARATION FAILED'}")
+    print(f"  Attempts: {prepared.attempts}")
 
-    if result.error:
-        print(f"  Error:    {result.error}")
+    if prepared.error:
+        print(f"  Error:    {prepared.error}")
 
-    if result.workflow:
-        print(f"\n  Workflow steps: {len(result.workflow.steps)}")
+    if prepared.workflow:
+        print(f"\n  Workflow steps: {len(prepared.workflow.steps)}")
 
-    print(f"\n  Runtime calls ({len(result.runtime_calls)}):")
-    for call in result.runtime_calls:
-        print(f"    [{call.step_id}] → {call.method_name}")
-        for k, v in call.variables.items():
-            print(f"        {k}: {v!r}")
-
-    if result.state:
-        print(f"\n  Final State:")
-        print(f"    tip_loaded:   {result.state.tip_loaded}")
-        print(f"    well_volumes: {result.state.well_volumes}")
-
-    print(f"\n  Execution Log:")
-    for entry in result.execution_log:
-        ok = entry.get("execution_success", False)
-        status = "OK  " if ok else "FAIL"
-        err = f" | {entry['error']}" if entry.get("error") else ""
-        print(f"    [{status}] {entry['step_id']} → {entry.get('method_name', 'N/A')}{err}")
-
-    if result.validation_feedback:
-        fb = result.validation_feedback
+    if prepared.validation_feedback:
+        fb = prepared.validation_feedback
         print(f"\n  Validation: {len(fb.errors)} error(s), {len(fb.warnings)} warning(s)")
         for e in fb.errors:
             print(f"    [ERROR] {e.message}")
         for w in fb.warnings:
-            print(f"    [WARN] {w.message}")
+            print(f"    [WARN]  {w.message}")
 
-    print("\n" + "=" * 62)
-    return 0 if result.success else 1
+    if not prepared.success:
+        print("\n" + "=" * 62)
+        return 1
+
+    # 5. Emit the portable JSON artifact — the input to any backend that
+    #    will execute the workflow (PyFluent, direct VisionX, a queue, ...).
+    calls_json = runtime_calls_to_dict_list(prepared.runtime_calls)
+
+    print(f"\n  Runtime calls ({len(calls_json)}):")
+    for entry in calls_json:
+        print(f"    [{entry['step_id']}] → {entry['method_name']}")
+        for k, v in entry["variables"].items():
+            print(f"        {k}: {v!r}")
+
+    print("\n  --- Portable JSON artifact (feed this to the executor) ---")
+    print(json.dumps(calls_json, indent=2, default=str))
+
+    # 6. Optionally persist it alongside the demo run.
+    out_path = os.path.join(os.path.dirname(__file__), f"{ir_name}.runtime_calls.json")
+    with open(out_path, "w") as f:
+        json.dump(calls_json, f, indent=2, default=str)
+    print(f"\n  Wrote artifact to: {out_path}")
+
+    # 7. Note on how to execute (deliberately not wired up here).
+    print(
+        "\n  To execute this artifact on a Fluent, plug in a PyFluent\n"
+        "  backend (or its simulation mode):\n\n"
+        "    from pyfluent.backends.fluent_visionx import FluentVisionX\n"
+        "    from execution_engine.runtime.pyfluent_adapter import PyFluentAdapter\n"
+        "    backend = FluentVisionX(simulation_mode=True)\n"
+        "    async with PyFluentAdapter(backend) as adapter:\n"
+        "        results = await adapter.execute_workflow(prepared.runtime_calls)\n"
+    )
+
+    print("=" * 62)
+    return 0
 
 
 if __name__ == "__main__":

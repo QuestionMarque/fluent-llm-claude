@@ -1,5 +1,35 @@
+"""PyFluent adapter — async bridge from RuntimeCall to a FluentVisionX-compatible backend.
+
+The adapter is deliberately thin:
+- It takes a *backend* (any object with the PyFluent FluentVisionX API shape:
+  setup/stop + per-operation async methods + run_method / wait_for_channel).
+- It translates one `RuntimeCall` into one awaited backend call, either via
+  the dispatch table (dedicated PyFluent method) or via the generic
+  `backend.run_method(...)` fallback for FluentControl methods that PyFluent
+  hasn't surfaced as Python APIs yet.
+- It enforces the same strict "no None values" rule at the boundary.
+
+Usage:
+
+    async with PyFluentAdapter(backend) as adapter:
+        result = await adapter.execute(call)
+
+    # or on a prepared workflow:
+    results = await adapter.execute_workflow(calls)
+"""
+from __future__ import annotations
+
+import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+from ..models.runtime_call import RuntimeCall
+
+if TYPE_CHECKING:
+    # Backend is duck-typed to the FluentVisionX shape. We avoid importing
+    # PyFluent at module import time so validation, mapping, and JSON export
+    # remain usable without the runtime dependency installed.
+    pass
 
 
 class RuntimeAdapterError(Exception):
@@ -8,71 +38,161 @@ class RuntimeAdapterError(Exception):
 
 @dataclass
 class ExecutionResult:
-    """Structured result returned after executing a single method."""
+    """Structured result from executing a single RuntimeCall."""
     success: bool
     method_name: str
     variables: Dict[str, Any] = field(default_factory=dict)
+    step_id: Optional[str] = None
     raw_result: Optional[Any] = None
     error: Optional[str] = None
 
 
+# Dispatch table: FluentControl method name -> PyFluent backend attribute.
+# When a registered method has a dedicated async method on the backend we
+# invoke it directly with **variables. Missing entries fall through to the
+# generic run_method path.
+DISPATCH: Dict[str, str] = {
+    "AspirateVolume": "aspirate_volume",
+    "DispenseVolume": "dispense_volume",
+    "GetTips": "get_tips",
+    "DropTipsToLocation": "drop_tips_to_location",
+    # The remaining FluentControl methods (ReagentDistribution,
+    # SampleTransfer, MixVolume, TransferLabware, EmptyTips) don't have
+    # dedicated PyFluent methods yet — they go via run_method.
+}
+
+
 class PyFluentAdapter:
-    """Execution bridge between RuntimeCall variables and the Fluent hardware runtime.
+    """Execution bridge between RuntimeCall and a FluentVisionX-compatible backend.
 
-    Two execution paths:
-    1. method_manager path: calls method_manager.run_method(name, variables)
-       — high-level PyFluent API, fewer control points
-    2. runtime path: PrepareMethod → SetVariableValue × N → RunMethod
-       — low-level control, matches FluentControl scripting model
+    Async-first. For synchronous callers (scripts, legacy tests) there are
+    `execute_sync` and `execute_workflow_sync` convenience wrappers.
 
-    Strict mode (default on): rejects None variable values before execution.
-    Disable only in tests or simulation scenarios.
+    The adapter is also an async context manager that owns the backend's
+    setup/stop lifecycle:
+
+        async with PyFluentAdapter(backend) as adapter:
+            await adapter.execute_workflow(calls)
     """
 
     def __init__(
         self,
-        runtime=None,
-        method_manager=None,
+        backend: Any,
         strict: bool = True,
+        channel_timeout: float = 90.0,
     ):
-        if runtime is None and method_manager is None:
+        if backend is None:
             raise RuntimeAdapterError(
-                "PyFluentAdapter requires either 'runtime' or 'method_manager' to be set."
+                "PyFluentAdapter requires a backend "
+                "(e.g. pyfluent.backends.fluent_visionx.FluentVisionX)."
             )
-        self.runtime = runtime
-        self.method_manager = method_manager
+        self.backend = backend
         self.strict = strict
+        self.channel_timeout = channel_timeout
 
-    def execute(self, method_name: str, variables: Dict[str, Any]) -> ExecutionResult:
-        """Validate variables then execute the method via the available runtime path."""
+    # --- Lifecycle -----------------------------------------------------
+
+    async def setup(self) -> None:
+        setup = getattr(self.backend, "setup", None)
+        if setup is not None:
+            await _maybe_await(setup())
+
+    async def stop(self) -> None:
+        stop = getattr(self.backend, "stop", None)
+        if stop is not None:
+            await _maybe_await(stop())
+
+    async def __aenter__(self) -> "PyFluentAdapter":
+        await self.setup()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        await self.stop()
+
+    # --- Execution -----------------------------------------------------
+
+    async def execute(self, call: RuntimeCall) -> ExecutionResult:
+        """Execute a single RuntimeCall against the backend."""
         try:
-            self._validate_variables(method_name, variables)
+            self._validate_variables(call)
         except RuntimeAdapterError as e:
             return ExecutionResult(
                 success=False,
-                method_name=method_name,
-                variables=variables,
+                method_name=call.method_name,
+                variables=call.variables,
+                step_id=call.step_id,
                 error=str(e),
             )
 
         try:
-            if self.method_manager is not None:
-                return self._execute_via_method_manager(method_name, variables)
-            return self._execute_via_runtime(method_name, variables)
+            dispatch_attr = DISPATCH.get(call.method_name)
+            if dispatch_attr is not None and hasattr(self.backend, dispatch_attr):
+                raw = await _maybe_await(
+                    getattr(self.backend, dispatch_attr)(**call.variables)
+                )
+            else:
+                raw = await self._execute_via_run_method(call)
         except Exception as e:
             return ExecutionResult(
                 success=False,
-                method_name=method_name,
-                variables=variables,
-                error=f"Runtime exception: {e}",
+                method_name=call.method_name,
+                variables=call.variables,
+                step_id=call.step_id,
+                error=f"Backend raised: {e}",
             )
 
-    def _validate_variables(self, method_name: str, variables: Any) -> None:
-        if not isinstance(variables, dict):
+        return ExecutionResult(
+            success=True,
+            method_name=call.method_name,
+            variables=call.variables,
+            step_id=call.step_id,
+            raw_result=raw,
+        )
+
+    async def execute_workflow(self, calls: List[RuntimeCall]) -> List[ExecutionResult]:
+        """Execute each RuntimeCall sequentially. Stops nothing on failure —
+        every call gets its own ExecutionResult; upstream decides what to do."""
+        results: List[ExecutionResult] = []
+        for call in calls:
+            results.append(await self.execute(call))
+        return results
+
+    # --- Synchronous conveniences -------------------------------------
+
+    def execute_sync(self, call: RuntimeCall) -> ExecutionResult:
+        """Blocking wrapper around execute() — suitable for CLI demos and
+        simple tests. Not for use from inside a running event loop."""
+        return asyncio.run(self.execute(call))
+
+    def execute_workflow_sync(self, calls: List[RuntimeCall]) -> List[ExecutionResult]:
+        return asyncio.run(self.execute_workflow(calls))
+
+    # --- Internals -----------------------------------------------------
+
+    async def _execute_via_run_method(self, call: RuntimeCall) -> Any:
+        """Generic path: start the FluentControl method on the API channel
+        and wait for the channel to report completion."""
+        run_method = getattr(self.backend, "run_method", None)
+        if run_method is None:
             raise RuntimeAdapterError(
-                f"Variables for '{method_name}' must be a dict, got {type(variables).__name__}."
+                f"Backend has no dedicated method for '{call.method_name}' "
+                "and no run_method fallback."
             )
-        for key, value in variables.items():
+        raw = await _maybe_await(
+            run_method(call.method_name, wait_for_completion=False, **call.variables)
+        )
+        wait_for_channel = getattr(self.backend, "wait_for_channel", None)
+        if wait_for_channel is not None:
+            await _maybe_await(wait_for_channel(timeout=self.channel_timeout))
+        return raw
+
+    def _validate_variables(self, call: RuntimeCall) -> None:
+        if not isinstance(call.variables, dict):
+            raise RuntimeAdapterError(
+                f"Variables for '{call.method_name}' must be a dict, "
+                f"got {type(call.variables).__name__}."
+            )
+        for key, value in call.variables.items():
             if not isinstance(key, str):
                 raise RuntimeAdapterError(
                     f"Variable key {key!r} must be a string."
@@ -83,27 +203,13 @@ class PyFluentAdapter:
                     "Resolve or remove it before execution."
                 )
 
-    def _execute_via_method_manager(
-        self, method_name: str, variables: Dict[str, Any]
-    ) -> ExecutionResult:
-        result = self.method_manager.run_method(method_name, variables)
-        return ExecutionResult(
-            success=True,
-            method_name=method_name,
-            variables=variables,
-            raw_result=result,
-        )
 
-    def _execute_via_runtime(
-        self, method_name: str, variables: Dict[str, Any]
-    ) -> ExecutionResult:
-        self.runtime.PrepareMethod(method_name)
-        for name, value in variables.items():
-            self.runtime.SetVariableValue(name, value)
-        result = self.runtime.RunMethod()
-        return ExecutionResult(
-            success=True,
-            method_name=method_name,
-            variables=variables,
-            raw_result=result,
-        )
+async def _maybe_await(value: Any) -> Any:
+    """Await `value` if it's a coroutine; otherwise return it as-is.
+
+    PyFluent's surface is async, but tests and adapters may supply sync
+    mocks. Accepting either keeps the adapter usable in both worlds.
+    """
+    if asyncio.iscoroutine(value):
+        return await value
+    return value

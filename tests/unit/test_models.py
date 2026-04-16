@@ -138,10 +138,20 @@ class TestRuntimeCallFromStep:
         call = RuntimeCall.from_step(step, registry)
         assert "cycles" not in call.variables
 
-    def test_get_tips_normalizes_diti_type(self, registry):
+    def test_get_tips_emits_pyfluent_diti_type_kwarg(self, registry):
+        # PyFluent's backend.get_tips takes `diti_type=`, so that's what
+        # we emit (not the internal normalized `tip_type`).
         step = Step(type="get_tips", params={"diti_type": "DiTi_1000uL"})
         call = RuntimeCall.from_step(step, registry)
-        assert call.variables["tip_type"] == "DiTi_1000uL"
+        assert call.variables["diti_type"] == "DiTi_1000uL"
+        assert "tip_type" not in call.variables
+
+    def test_get_tips_accepts_tip_type_alias(self, registry):
+        # Upstream aliases still work: tip_type / DiTi_type / diti_type
+        # all land as the PyFluent kwarg `diti_type` in RuntimeCall.variables.
+        step = Step(type="get_tips", params={"tip_type": "DiTi_200uL"})
+        call = RuntimeCall.from_step(step, registry)
+        assert call.variables["diti_type"] == "DiTi_200uL"
 
     def test_none_values_are_filtered(self, registry):
         step = Step(type="get_tips", params={

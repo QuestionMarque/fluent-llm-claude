@@ -45,3 +45,6 @@ dist/
 out/
 .next/
 .nuxt/
+
+# Demo output (RuntimeCall JSON artifacts)
+*.runtime_calls.json
