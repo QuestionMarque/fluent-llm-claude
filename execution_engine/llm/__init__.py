@@ -2,6 +2,7 @@ from .backends import DemoBackend, LLMBackend, LLMBackendError, OpenAIBackend
 from .ir_generator import IRGenerationResult, IRGenerator
 from .llm_client import (
     Conversation,
+    FeedbackBudgetExceededError,
     LLMClient,
     LLMClientError,
     StructuredJSONError,
@@ -18,6 +19,7 @@ __all__ = [
     "LLMClient",
     "LLMClientError",
     "StructuredJSONError",
+    "FeedbackBudgetExceededError",
     "Conversation",
     # Generator
     "IRGenerator",

@@ -7,6 +7,7 @@ import pytest
 from execution_engine.capability_registry.loader import load_default_registry
 from execution_engine.llm import (
     DemoBackend,
+    FeedbackBudgetExceededError,
     IRGenerator,
     LLMBackendError,
     LLMClient,
@@ -120,6 +121,60 @@ class TestLLMClient:
         # The second backend call should have seen the full history.
         assert len(backend.calls) == 2
         assert len(backend.calls[-1]) == 4  # system + user + assistant + user
+        # And the per-conversation feedback counter ticked once.
+        assert conv.feedback_turns == 1
+
+    def test_rejects_negative_feedback_budget(self):
+        with pytest.raises(LLMClientError):
+            LLMClient(backend=DemoBackend(script=[{"x": 1}]), max_feedback_turns=-1)
+
+
+class TestFeedbackBudget:
+    """The hard safety guard against unbounded LLM feedback loops."""
+
+    def test_continue_with_succeeds_within_budget(self):
+        backend = DemoBackend(script=[{"v": 0}, {"v": 1}, {"v": 2}])
+        client = LLMClient(backend=backend, max_feedback_turns=2)
+        conv = client.start_conversation("init")
+        client.complete_conversation(conv)          # turn 0 — initial, not counted
+        client.continue_with(conv, "feedback 1")    # turn 1
+        client.continue_with(conv, "feedback 2")    # turn 2
+        assert conv.feedback_turns == 2
+        assert len(backend.calls) == 3              # initial + 2 follow-ups
+
+    def test_continue_with_raises_after_budget_exhausted(self):
+        backend = DemoBackend(script=[{"v": 0}, {"v": 1}, {"v": 2}])
+        client = LLMClient(backend=backend, max_feedback_turns=1)
+        conv = client.start_conversation("init")
+        client.complete_conversation(conv)
+        client.continue_with(conv, "feedback 1")    # uses the only budgeted turn
+        with pytest.raises(FeedbackBudgetExceededError):
+            client.continue_with(conv, "feedback 2")
+        # The budget guard fires *before* contacting the backend.
+        assert len(backend.calls) == 2
+        assert conv.feedback_turns == 1
+
+    def test_zero_budget_blocks_first_continue(self):
+        backend = DemoBackend(script=[{"v": 0}, {"v": 1}])
+        client = LLMClient(backend=backend, max_feedback_turns=0)
+        conv = client.start_conversation("init")
+        client.complete_conversation(conv)
+        with pytest.raises(FeedbackBudgetExceededError):
+            client.continue_with(conv, "feedback")
+        assert len(backend.calls) == 1               # only the initial call
+
+    def test_fresh_conversation_resets_budget(self):
+        backend = DemoBackend(script=[{"v": 0}, {"v": 1}, {"v": 2}, {"v": 3}])
+        client = LLMClient(backend=backend, max_feedback_turns=1)
+        conv1 = client.start_conversation("first")
+        client.complete_conversation(conv1)
+        client.continue_with(conv1, "feedback")
+        # Same client, new conversation — budget resets.
+        conv2 = client.start_conversation("second")
+        client.complete_conversation(conv2)
+        client.continue_with(conv2, "feedback")
+        assert conv1.feedback_turns == 1
+        assert conv2.feedback_turns == 1
 
     def test_from_env_defaults_to_openai(self, monkeypatch):
         # No OPENAI_API_KEY — should fail with a helpful error.
@@ -237,3 +292,31 @@ class TestIRGenerator:
         assert result.conversation is not None
         # system + user(initial) + assistant + user(feedback) + assistant
         assert len(result.conversation.messages) == 5
+
+    def test_budget_exhaustion_is_handled_gracefully(
+        self, prompt_builder, validator
+    ):
+        """If IRGenerator wants more retries than the LLMClient budget
+        allows, the client raises FeedbackBudgetExceededError; the
+        generator should catch it and return a clean failure result —
+        not propagate."""
+        backend = DemoBackend(script=[FLAWED_IR, FLAWED_IR, FLAWED_IR, VALID_IR])
+        # Generator wants up to 3 retries (4 total attempts), but the
+        # client will refuse a 2nd continue_with.
+        client = LLMClient(backend=backend, max_feedback_turns=1)
+        gen = IRGenerator(
+            client=client,
+            prompt_builder=prompt_builder,
+            validator=validator,
+            max_retries=3,
+        )
+        result = gen.generate("any IFU")
+        assert not result.success
+        assert "feedback budget" in result.error.lower()
+        # The IRGenerator made the initial call + one continue_with;
+        # the second continue_with tripped the guard before reaching the backend.
+        assert len(backend.calls) == 2
+        # Returned partial state for inspection.
+        assert result.workflow is not None       # last decomposed workflow
+        assert result.validation_feedback is not None
+        assert result.conversation is not None

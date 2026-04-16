@@ -30,20 +30,35 @@ class StructuredJSONError(LLMClientError):
     pass
 
 
+class FeedbackBudgetExceededError(LLMClientError):
+    """Raised when LLMClient.continue_with is called past its configured
+    `max_feedback_turns` budget for a single conversation.
+
+    Hard safety guard against runaway feedback loops that would consume
+    an unbounded number of tokens. Per-conversation: starts fresh with
+    every `start_conversation`."""
+
+
 @dataclass
 class Conversation:
     """Full message history of a single IFU → IR generation run.
 
     Exposed so IRGenerator can carry context across retry turns and so
     callers can inspect exactly what was exchanged.
+
+    `feedback_turns` counts the number of `LLMClient.continue_with`
+    calls executed against this conversation. It's checked against
+    `LLMClient.max_feedback_turns` to bound the feedback loop.
     """
     messages: List[Message] = field(default_factory=list)
     responses: List[str] = field(default_factory=list)
+    feedback_turns: int = 0
 
     def copy(self) -> "Conversation":
         return Conversation(
             messages=copy.deepcopy(self.messages),
             responses=list(self.responses),
+            feedback_turns=self.feedback_turns,
         )
 
 
@@ -68,11 +83,30 @@ class LLMClient:
         self,
         backend: LLMBackend,
         max_json_retries: int = 3,
+        max_feedback_turns: int = 5,
     ):
+        """
+        Parameters
+        ----------
+        backend
+            Provider-specific backend (OpenAIBackend, DemoBackend, …).
+        max_json_retries
+            How many times to re-ask the backend when its response is not
+            valid JSON. Per `complete_conversation` call.
+        max_feedback_turns
+            Hard cap on the number of `continue_with` calls allowed on a
+            single Conversation. Bounds the feedback loop so a misbehaving
+            caller — or an LLM that never converges — cannot consume an
+            unbounded number of tokens. Counted per Conversation; resets
+            when `start_conversation` returns a fresh one.
+        """
         if backend is None:
             raise LLMClientError("LLMClient needs a backend (see llm.backends).")
+        if max_feedback_turns < 0:
+            raise LLMClientError("max_feedback_turns must be >= 0.")
         self.backend = backend
         self.max_json_retries = max_json_retries
+        self.max_feedback_turns = max_feedback_turns
 
     # ------------------------------------------------------------------
     # Factories
@@ -83,6 +117,7 @@ class LLMClient:
         cls,
         demo_script: Optional[List[Any]] = None,
         max_json_retries: int = 3,
+        max_feedback_turns: int = 5,
     ) -> "LLMClient":
         """Build a client from environment variables.
 
@@ -112,7 +147,11 @@ class LLMClient:
                 "Supported: 'openai', 'demo'. Add a new backend in llm/backends.py."
             )
 
-        return cls(backend=backend, max_json_retries=max_json_retries)
+        return cls(
+            backend=backend,
+            max_json_retries=max_json_retries,
+            max_feedback_turns=max_feedback_turns,
+        )
 
     # ------------------------------------------------------------------
     # Single-turn
@@ -171,7 +210,21 @@ class LLMClient:
 
     def continue_with(self, conv: Conversation, user_message: str) -> Dict[str, Any]:
         """Append a user turn (typically validation feedback) and ask the
-        backend for a new response. The conversation grows in place."""
+        backend for a new response. The conversation grows in place.
+
+        Enforces the per-conversation `max_feedback_turns` budget: if
+        `conv.feedback_turns` is already at the cap, raises
+        `FeedbackBudgetExceededError` *before* contacting the backend so
+        no extra tokens are consumed. The counter is incremented only
+        after the budget check passes.
+        """
+        if conv.feedback_turns >= self.max_feedback_turns:
+            raise FeedbackBudgetExceededError(
+                f"continue_with refused: feedback budget "
+                f"({self.max_feedback_turns}) already exhausted for this "
+                f"conversation. Increase max_feedback_turns or stop the loop."
+            )
+        conv.feedback_turns += 1
         conv.messages.append({"role": "user", "content": user_message})
         return self.complete_conversation(conv)
 

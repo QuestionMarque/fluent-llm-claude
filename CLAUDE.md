@@ -177,12 +177,23 @@ failure.
 - Backend abstraction in `llm/backends.py`: `LLMBackend` Protocol, with
   `OpenAIBackend` (requires `openai` + `OPENAI_API_KEY`) and
   `DemoBackend` (scripted responses — no network, no key).
-- `LLMClient(backend=…, max_json_retries=…)` — provider-agnostic façade.
-  `LLMClient.from_env()` reads `LLM_PROVIDER` (default `openai`),
-  `LLM_MODEL` (default `gpt-4o-mini`), and `OPENAI_API_KEY`.
+- `LLMClient(backend=…, max_json_retries=3, max_feedback_turns=5)` —
+  provider-agnostic façade. `LLMClient.from_env()` reads `LLM_PROVIDER`
+  (default `openai`), `LLM_MODEL` (default `gpt-4o-mini`), and
+  `OPENAI_API_KEY`.
+- **Two retry budgets** are tracked separately:
+  - `max_json_retries` — re-asks the backend on JSON parse failure
+    inside one `complete_conversation` call.
+  - `max_feedback_turns` — per-conversation **hard cap** on
+    `continue_with` calls. Counted on `Conversation.feedback_turns`;
+    the guard fires *before* contacting the backend, so an exhausted
+    budget consumes zero extra tokens. Raises
+    `FeedbackBudgetExceededError`. `IRGenerator` catches it and returns
+    a clean failed `IRGenerationResult`.
 - `IRGenerator` owns the **multi-turn feedback loop**: sends the IFU,
   validates the returned IR, appends validation errors as a new user
-  turn, asks the model to revise, loops up to `max_retries`.
+  turn, asks the model to revise, loops up to `max_retries`. Keep
+  `IRGenerator.max_retries` ≤ `LLMClient.max_feedback_turns`.
 - `ExecutionLoop` delegates LLM-mode preparation to `IRGenerator` —
   pass it via the `ir_generator=` constructor argument.
 - `demo_llm.py` runs the full LLM scenario without an API key: a
@@ -204,7 +215,7 @@ tests/unit/
 ```
 
 Run with: `python3 -m pytest tests/ -q`
-Current count: 107 tests, all passing.
+Current count: 113 tests, all passing.
 
 ---
 
@@ -288,6 +299,10 @@ bottom (or delete them once documented elsewhere).
 
 ### Recently done
 
+- Hard `max_feedback_turns` budget on `LLMClient` (raises
+  `FeedbackBudgetExceededError` before contacting the backend so
+  exhausted budgets cost zero tokens; `IRGenerator` catches and
+  returns a clean failure).
 - Replaced flat retry prompts with a proper multi-turn LLM feedback
   loop (`IRGenerator`).
 - Introduced swappable `LLMBackend` (`OpenAIBackend`, `DemoBackend`)

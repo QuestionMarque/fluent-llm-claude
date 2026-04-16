@@ -55,7 +55,7 @@ that reconstructed a fresh prompt on every attempt.
 ### `llm_client.py`
 `LLMClient` — provider-agnostic façade over a backend.
 
-- `LLMClient(backend=..., max_json_retries=3)` — explicit
+- `LLMClient(backend=..., max_json_retries=3, max_feedback_turns=5)`
 - `LLMClient.from_env(demo_script=None)` — reads `LLM_PROVIDER`,
   `LLM_MODEL`, `OPENAI_API_KEY` from environment.
 - `generate_ir(prompt)` — single-turn convenience.
@@ -64,7 +64,26 @@ that reconstructed a fresh prompt on every attempt.
   appends assistant turn. Retries JSON-parse failures only.
 - `continue_with(conv, user_msg)` — appends a follow-up user turn and
   asks the backend for a new response. This is what drives the
-  feedback loop.
+  feedback loop. Increments `conv.feedback_turns`; raises
+  `FeedbackBudgetExceededError` *before* contacting the backend if the
+  per-conversation budget would be exceeded.
+
+#### Feedback-loop budget
+
+`max_feedback_turns` (default 5) is a **hard safety guard** on the
+number of `continue_with` calls allowed against any one Conversation.
+It exists to prevent a misbehaving caller — or an LLM that never
+converges — from looping indefinitely and burning tokens.
+
+- The counter (`Conversation.feedback_turns`) lives on the
+  Conversation, so `start_conversation` resets it.
+- The check happens *before* the backend call, so an exhausted budget
+  costs zero extra tokens.
+- `IRGenerator` catches `FeedbackBudgetExceededError` and returns a
+  failed `IRGenerationResult` rather than propagating, so the executor
+  always sees a clean result even at the safety boundary.
+- Choose values consistent with each other: `IRGenerator.max_retries`
+  ≤ `LLMClient.max_feedback_turns`.
 
 ### `ir_generator.py`
 `IRGenerator` — the orchestrator that owns the IFU → validated IR

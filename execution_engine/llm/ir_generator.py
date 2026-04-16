@@ -23,7 +23,12 @@ from ..models.workflow import Workflow
 from ..validation.feedback_builder import FeedbackBuilder
 from ..validation.validator_wrapper import ValidatorWrapper
 from ..workflow.decomposer import WorkflowDecomposer
-from .llm_client import Conversation, LLMClient, StructuredJSONError
+from .llm_client import (
+    Conversation,
+    FeedbackBudgetExceededError,
+    LLMClient,
+    StructuredJSONError,
+)
 from .prompt_builder import PromptBuilder
 
 
@@ -105,6 +110,22 @@ class IRGenerator:
                     attempts=attempt,
                     conversation=conv,
                     error=f"LLM returned unparseable JSON: {e}",
+                )
+            except FeedbackBudgetExceededError as e:
+                # The hard safety guard kicked in. Stop now without calling
+                # the backend again — return what we have so far.
+                return IRGenerationResult(
+                    success=False,
+                    attempts=attempt,
+                    ir=last_ir,
+                    workflow=last_workflow,
+                    validation_feedback=last_feedback,
+                    conversation=conv,
+                    error=(
+                        f"LLM feedback budget exhausted: {e}. "
+                        "Increase LLMClient(max_feedback_turns=...) or "
+                        "lower IRGenerator(max_retries=...)."
+                    ),
                 )
 
             last_ir = ir
